@@ -1,0 +1,39 @@
+class Program {
+  int input[100], temp[100];
+  void merge(int l, int r) {
+    int mid, i, j;
+
+    if (l >= r) {
+      return;
+    }
+
+    mid = (l + r)/2;
+    merge(l, mid);
+    merge(mid + 1, r);
+
+    i = l;
+    j = mid + 1;
+    for k = l, r {
+      if (j > r) {
+        temp[k] = input[i];
+        i += 1;
+      } else {
+        if (i > mid || input[j] < input[i]) {
+          temp[k] = input[j];
+          j += 1;
+        } else {
+          temp[k] = input[i];
+          i += 1;
+        }
+      }
+    }
+    
+    for k = l, r {
+      input[k] = temp[k];
+    }
+  }
+
+  int main() {
+    
+  }
+}

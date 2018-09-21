@@ -1,0 +1,20 @@
+class Program {
+  int input[100];
+  void bubble(int n) {
+    int temp;
+    
+    for i = 0, n - 1 {
+      for j = 1, n - 1 {
+        if (input[i - 1] > input[i]) {
+          temp = input[i - 1];
+          input[i - 1] = input[i];
+          input[i] = temp;
+        }
+      }
+    }
+  }
+  
+  int main() {
+    
+  }
+}

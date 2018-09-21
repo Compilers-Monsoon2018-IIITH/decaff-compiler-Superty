@@ -1,0 +1,8 @@
+class Program {
+  int sumn(int n) {
+    return (n*(n+1))/2;
+  }
+  int main() {
+    
+  }
+}
