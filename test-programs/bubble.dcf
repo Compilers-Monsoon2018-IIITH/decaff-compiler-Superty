@@ -14,7 +14,30 @@ class Program {
     }
   }
   
+  int getInt() {
+    int ret, input;
+    ret = 0;
+    for thisLanguageHasNoWhileLoop = 1, 2 {
+      thisLanguageHasNoWhileLoop -= 1;
+
+      input = callout("getchar");
+      if (input >= 48 && input <= 57) {
+        ret = 10*ret + input - 48;
+      } else {
+        break;
+      }
+    }
+    return ret;
+  }
   int main() {
-    
+    int n;
+    n = readInt();
+    for i = 0, n - 1 {
+      a[i] = readInt();
+    }
+    bubble(n);
+    for i = 0, n - 1 {
+      callout("printf", "%d ", a[i]);
+    }
   }
 }
