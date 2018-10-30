@@ -3,6 +3,12 @@
 #define YYDEBUG 1
 %}
 
+%skeleton "lalr1.cc" /* -*- C++ -*- */
+%defines
+%define api.token.constructor
+%define api.value.type variant
+%define parse.assert
+%define parse.trace
 /*
 %union {
  int int_val;
@@ -12,6 +18,7 @@
 }*/
 
 /* declare tokens */
+%define api.token.prefix {TOK_}
 %token ID
 %token INT_LITERAL
 %token STRING_LITERAL
@@ -155,9 +162,10 @@ callout_arg: expr
 %%
 int main(int argc, char **argv)
 {
- yyparse();
+ yy::parser parse;
+ parse();
 }
-void yyerror(char *s)
+void yy::parser::error(const std::string& s)
 {
- fprintf(stderr, "error: %s\n", s);
+ cerr << "error: " << s << '\n';
 }
