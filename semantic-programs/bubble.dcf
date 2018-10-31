@@ -1,27 +1,17 @@
 class Program {
   int input[100];
-  void quick(int l, int r) {
-    int i, temp;
-
-    if (l >= r) {
-      return;
-    }
-
-    i = l;
-    for j = l, r - 1 {
-      if (input[j] < input[r]) {
-        temp = input[j];
-        input[j] = input[i];
-        input[i] = temp;
-        i += 1;
+  void bubble(int n) {
+    int temp;
+    
+    for i = 0, n - 1 {
+      for j = 1, n - 1 {
+        if (input[i - 1] > input[i]) {
+          temp = input[i - 1];
+          input[i - 1] = input[i];
+          input[i] = temp;
+        }
       }
     }
-    temp = input[r];
-    input[r] = input[i];
-    input[i] = temp;
-
-    quick(l, i - 1);
-    quick(i + 1, r);
   }
   
   int getInt() {
@@ -43,11 +33,11 @@ class Program {
     int n;
     n = readInt();
     for i = 0, n - 1 {
-      a[i] = readInt();
+      input[i] = readInt();
     }
-    quick(n);
+    bubble(n);
     for i = 0, n - 1 {
-      callout("printf", "%d ", a[i]);
+      callout("printf", "%d ", input[i]);
     }
   }
 }

@@ -43,7 +43,7 @@ class Program {
     int n;
     n = readInt();
     for i = 0, n - 1 {
-      a[i] = readInt();
+      input[i] = readInt();
     }
     callout("printf", "%d", nextmax(n));
   }

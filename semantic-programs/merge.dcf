@@ -52,11 +52,11 @@ class Program {
     int n;
     n = readInt();
     for i = 0, n - 1 {
-      a[i] = readInt();
+      input[i] = readInt();
     }
-    merge(n);
+    merge(0, n - 1);
     for i = 0, n - 1 {
-      callout("printf", "%d ", a[i]);
+      callout("printf", "%d ", input[i]);
     }
   }
 }
