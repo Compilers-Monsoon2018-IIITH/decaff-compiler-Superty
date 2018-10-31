@@ -1,14 +1,14 @@
 #pragma once
 
-class AstNode;
-
-class AstVisitor {
-public:
-  virtual void visit(AstNode* node) = 0;
+enum class Type {
+  INT_TYPE, BOOLEAN_TYPE, STRING_TYPE, VOID_TYPE
 };
+
+class AstVisitor;
 
 class AstNode {
 public:
-  virtual ~AstNode() = 0;
+  virtual ~AstNode();
   virtual void accept(AstVisitor* v) = 0;
+  Type t;
 };

@@ -1,47 +1,75 @@
+#pragma once
+
 #include "ExprNode.h"
 
-class enum StatementType {
-  ASSIGN, CALL, IF, FOR, RETURN, BREAK, CONTINUE, BLOCK;
-}
-class enum AssignOp {
-  ASSIGN, PLUS_ASSIGN, MINUS_ASSIGN;
-}
+using IdList = ListNode<StringLitNode*>;
+
 struct Var {
   Type type;
-  string id;
-}
+  std::string id;
+};
+using VarList = ListNode<Var>;
 
-class StatementNode {
+class TypeNode : public AstNode {
 public:
-  StatementType type;
-  StatementNode(StatementType type);
+  void accept(AstVisitor* v) override;
+  Type type;
+  TypeNode(Type o_type);
 };
-class AssignNode : public StatementNode {
-public:
-  Location location;
-  AssignOp op;
-  ExprNode *value;
+Type ReduceToType(TypeNode *node);
+Var ReduceToVar(AstNode *type, AstNode *id);
+
+enum class StatementType {
+  ASSIGN, CALL, IF, FOR, RETURN, BREAK, CONTINUE, BLOCK
 };
-class StatementCallNode : public StatementNode {
-public:
-  MethodCallNode *node;
-}
-class IfNode : public StatementNode {
-public:
-  ExprNode *cond;
-  BlockNode *then, *otherwise;
+enum class AssignOp {
+  ASSIGN, PLUS_ASSIGN, MINUS_ASSIGN
 };
-class ForNode : public StatementNode {
+
+class BlockNode : public AstNode {
 public:
-  ExprNode *start, *end;
-  BlockNode *body;
-};
-class ReturnNode : public StatementNode {
-public:
-  ExprNode *value;
-};
-class BlockNode : public StatementNode {
-public:
+  void accept(AstVisitor* v) override;
   std::vector<Var> var_decls;
-  std::vector<StatementNode*> statements;
+  std::vector<AstNode*> statements;
+  void AppendVars(TypeNode* type, IdList* ids);
+  void SetStatements(ListNode<AstNode*> *o_statements);
+};
+class AssignNode : public AstNode {
+public:
+  void accept(AstVisitor* v) override;
+  LocationNode *location;
+  AssignOp op;
+  AstNode *value;
+  AssignNode(LocationNode *o_location, AssignOp o_op, AstNode *o_value);
+};
+class IfNode : public AstNode {
+public:
+  void accept(AstVisitor* v) override;
+  AstNode *cond;
+  BlockNode *then, *otherwise;
+  IfNode(AstNode *cond, BlockNode *then, BlockNode *otherwise);
+};
+class ForNode : public AstNode {
+public:
+  void accept(AstVisitor* v) override;
+  std::string id;
+  AstNode *start, *end;
+  BlockNode *body;
+  ForNode(std::string o_id, AstNode *o_start, AstNode *o_end, BlockNode *o_body);
+};
+class ReturnNode : public AstNode {
+public:
+  void accept(AstVisitor* v) override;
+  AstNode *value;
+  ReturnNode(AstNode *o_value);
+};
+
+enum class LoopControlType {
+  CONTINUE, BREAK
+};
+class LoopControlNode : public AstNode {
+public:
+  void accept(AstVisitor* v) override;
+  LoopControlType type;
+  LoopControlNode(LoopControlType o_type);
 };

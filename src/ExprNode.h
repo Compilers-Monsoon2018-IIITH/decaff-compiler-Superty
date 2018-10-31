@@ -1,27 +1,50 @@
 #pragma once
 
 #include "AstNode.h"
+#include "ListNode.h"
 #include <string>
 #include <vector>
+#include <variant>
 
-struct CalloutArg {
-  AstNode *maybe_expr;
-  std::string maybe_string;
+using CalloutArg = std::variant<AstNode*, std::string>;
+using CalloutArgList = ListNode<CalloutArg>;
+using ArgList = ListNode<AstNode*>;
+
+class IntLitNode : public AstNode {
+public:
+  int value;
+  void accept(AstVisitor* v) override;
+  IntLitNode(int o_value);
 };
-struct Location {
-  std::string id;
-  AstNode *index;
+class CharLitNode : public AstNode {
+public:
+  char value;
+  void accept(AstVisitor* v) override;
+  CharLitNode(char o_value);
 };
-enum class BinOp {
-OR, AND, EQ, NE, LT, LE, GE, GT, PLUS, MINUS, MULT, DIV, MOD };
-enum class UnOp {
-  NEG, NOT
+class StringLitNode : public AstNode {
+public:
+  std::string value;
+  void accept(AstVisitor* v) override;
+  StringLitNode(std::string o_value);
+};
+class BoolLitNode : public AstNode {
+public:
+  bool value;
+  void accept(AstVisitor* v) override;
+  BoolLitNode(bool o_value);
+};
+
+enum class Op {
+  OR, AND, EQ, NE, LT, LE, GE, GT, PLUS, MINUS, MULT, DIV, MOD, NOT
 };
 
 class LocationNode : public AstNode {
 public:
-  Location location;
+  std::string id;
+  AstNode* index;
   void accept(AstVisitor* v) override;
+  LocationNode(StringLitNode *o_id, AstNode* o_index = nullptr);
 };
 class MethodCallNode : public AstNode {
 public:
@@ -29,36 +52,22 @@ public:
   std::vector<AstNode*> args;
   std::vector<CalloutArg> callout_args;
   void accept(AstVisitor* v) override;
-};
-class IntLitNode : public AstNode {
-public:
-  int value;
-  void accept(AstVisitor* v) override;
-};
-class CharLitNode : public AstNode {
-public:
-  char value;
-  void accept(AstVisitor* v) override;
-};
-class StringLitNode : public AstNode {
-public:
-  std::string value;
-  void accept(AstVisitor* v) override;
-};
-class BoolLitNode : public AstNode {
-public:
-  bool value;
-  void accept(AstVisitor* v) override;
+  MethodCallNode(StringLitNode *o_id, CalloutArgList* o_callout_args);
+  MethodCallNode(StringLitNode *o_id, ArgList* o_args);
 };
 class BinopNode : public AstNode {
 public:
-  BinOp op;
+  Op op;
   AstNode *left, *right;
   void accept(AstVisitor* v) override;
+  BinopNode(AstNode* o_left, Op o_op, AstNode *o_right);
 };
 class UnopNode : public AstNode {
 public:
-  UnOp op;
+  Op op;
   AstNode *expr;
   void accept(AstVisitor* v) override;
+  UnopNode(Op o_op, AstNode* o_expr);
 };
+std::string ReduceToString(StringLitNode* node);
+int ReduceToInt(IntLitNode* node);
