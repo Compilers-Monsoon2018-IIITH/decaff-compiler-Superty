@@ -2,7 +2,7 @@
 %pointer
 
 %{
-#include "parser.tab.h"
+#include "parser.tab.hh"
 #include <stdio.h>
 #include <stdlib.h>
 %}

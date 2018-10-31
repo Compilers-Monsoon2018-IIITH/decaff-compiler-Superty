@@ -1,6 +1,9 @@
 %{
 #include <stdio.h>
 #define YYDEBUG 1
+
+void yyerror(char *s);
+int yylex(void);
 %}
 
 /*
