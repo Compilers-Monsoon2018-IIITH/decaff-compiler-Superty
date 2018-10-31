@@ -1,8 +1,8 @@
 parser: parser.y lexer.l
-		bison -d parser.y -v 
-		flex lexer.l
-		g++ -o parser parser.tab.c lex.yy.c -std=c++14
+		bison -o parser.tab.cc -d parser.y -v
+		flex -o lex.yy.cc lexer.l
+		g++ -o parser parser.tab.cc lex.yy.cc -std=c++14
 
 .PHONY: clean
 clean:
-	rm -f lex.yy.c parser.tab.c parser.tab.h parser parser.output
+	rm -f lex.yy.cc parser.tab.cc parser.tab.hh parser parser.output

@@ -1,23 +1,16 @@
+#pragma once
+
+#include "AstNode.h"
 #include <string>
 #include <vector>
 
-enum class ExprType {
-  LOCATION, CALL, INT_LIT, CHAR_LIT, STRING_LIT, BOOL_LIT, BINOP, UNOP
-};
-  class ExprNode {
-public:
-  ExprType type;
-protected:
-  ExprNode(ExprType o_type);
-};
-
 struct CalloutArg {
-  ExprNode *maybe_expr;
+  AstNode *maybe_expr;
   std::string maybe_string;
 };
 struct Location {
   std::string id;
-  ExprNode *index;
+  AstNode *index;
 };
 enum class BinOp {
 OR, AND, EQ, NE, LT, LE, GE, GT, PLUS, MINUS, MULT, DIV, MOD };
@@ -25,47 +18,47 @@ enum class UnOp {
   NEG, NOT
 };
 
-class LocationNode : public ExprNode {
+class LocationNode : public AstNode {
 public:
   Location location;
-  LocationNode();
+  void accept(AstVisitor* v) override;
 };
-class MethodCallNode : public ExprNode {
+class MethodCallNode : public AstNode {
 public:
   std::string id;
-  std::vector<ExprNode*> args;
+  std::vector<AstNode*> args;
   std::vector<CalloutArg> callout_args;
-  MethodCallNode();
+  void accept(AstVisitor* v) override;
 };
-class IntLitNode : public ExprNode {
+class IntLitNode : public AstNode {
 public:
   int value;
-  IntLitNode();
+  void accept(AstVisitor* v) override;
 };
-class CharLitNode : public ExprNode {
+class CharLitNode : public AstNode {
 public:
   char value;
-  CharLitNode();
+  void accept(AstVisitor* v) override;
 };
-class StringLitNode : public ExprNode {
+class StringLitNode : public AstNode {
 public:
   std::string value;
-  StringLitNode();
+  void accept(AstVisitor* v) override;
 };
-class BoolLitNode : public ExprNode {
+class BoolLitNode : public AstNode {
 public:
   bool value;
-  BoolLitNode();
+  void accept(AstVisitor* v) override;
 };
-class BinopNode : public ExprNode {
+class BinopNode : public AstNode {
 public:
   BinOp op;
-  ExprNode *left, *right;
-  BinopNode();
+  AstNode *left, *right;
+  void accept(AstVisitor* v) override;
 };
-class UnopNode : public ExprNode {
+class UnopNode : public AstNode {
 public:
   UnOp op;
-  ExprNode *expr;
-  UnopNode();
+  AstNode *expr;
+  void accept(AstVisitor* v) override;
 };
