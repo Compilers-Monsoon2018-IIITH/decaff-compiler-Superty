@@ -17,6 +17,7 @@ class StringLitNode;
 class BoolLitNode;
 class BinopNode;
 class UnopNode;
+class UnvisitableNode;
 class AstNode;
 
 class AstVisitor {
@@ -38,5 +39,5 @@ public:
   virtual void visit(LoopControlNode* node) = 0;
   virtual void visit(MethodNode* node) = 0;
   virtual void visit(RootNode* node) = 0;
-  virtual void visit(AstNode* node) = 0;
+  virtual void visit(UnvisitableNode* node) = 0;
 };

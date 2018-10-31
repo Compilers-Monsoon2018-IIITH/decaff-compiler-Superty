@@ -5,15 +5,12 @@
 #include <vector>
 
 template <class T>
-class ListNode : public AstNode {
+class ListNode : public UnvisitableNode {
 public:
   T value;
   ListNode<T>* next;
   ListNode(T o_value, ListNode<T>* o_next)
   : value(o_value), next(o_next) { }
-  void accept(AstVisitor* v) override {
-    v->visit(this);
-  }
 };
 
 template <class T>

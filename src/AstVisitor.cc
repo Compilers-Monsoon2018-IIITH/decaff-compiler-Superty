@@ -55,6 +55,6 @@ void BinopNode::accept(AstVisitor* v) {
 void UnopNode::accept(AstVisitor* v) {
   v->visit(this);
 }
-// void AstNode::accept(AstVisitor* v) {
-//   v->visit(this);
-// }
+void UnvisitableNode::accept(AstVisitor* v) {
+  v->visit(this);
+}

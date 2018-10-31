@@ -90,7 +90,7 @@ var_decl_list: /* nothing */ {$$ = new BlockNode;}
 ;
 
 nonempty_id_list: ID {$$ = new IdList((StringLitNode*)$1, nullptr);}
-| ID COMMA nonempty_id_list {$$ = $1; ((IdList*)$$)->next = (IdList*)$3;}
+| ID COMMA nonempty_id_list {$$ = new IdList((StringLitNode*)$1, (IdList*)$3);}
 ;
 
 value_type: INT_TYPE {$$ = new TypeNode(Type::INT_TYPE);}
