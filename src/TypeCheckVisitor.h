@@ -5,6 +5,8 @@
 #include "BlockNode.h"
 #include "RootNode.h"
 
+using VarTable = std::unordered_map<std::string,std::pair<Type,bool>>;
+
 class TypeCheckVisitor : public AstVisitor {
 public:
   void visit(IntLitNode* node) override;
@@ -28,6 +30,12 @@ public:
   bool success;
   TypeCheckVisitor();
 private:
-  std::unordered_map<std::string,std::pair<Type,bool>> vars;
+  VarTable vars;
   std::unordered_map<std::string,std::vector<Type>> methods;
+
+  void AddScopedVar(Var var, VarTable& shadow_list);
+  void RestoreShadowedVars(const VarTable& shadow_list);
+  void DumpVars();
+  bool Ensure(bool predicate);
+  void ForceSame(Type& t, Type u);
 };

@@ -7,6 +7,7 @@
 #include "driver.h"
 #define YYSTYPE AstNode*
 #include <stdio.h>
+#include <iostream>
 #define YYDEBUG 1
 
 void yyerror(char *s);
@@ -67,7 +68,7 @@ nonempty_field_list: field SEMICOLON {$$ = $1;}
 ;
 
 method_decl: VOID_TYPE ID OPEN_PAREN formal_parameter_list CLOSE_PAREN block {$$ = ConstructMethodNode(new TypeNode(Type::VOID_TYPE), $2, $4, $6);}
-| value_type ID OPEN_PAREN formal_parameter_list CLOSE_PAREN block { ConstructMethodNode($1, $2, $4, $6); }
+| value_type ID OPEN_PAREN formal_parameter_list CLOSE_PAREN block { /*std::cerr << "MethodNode " << ((StringLitNode*)$2)->value <<  '\n'; */$$ = ConstructMethodNode($1, $2, $4, $6); }
 ;
 
 formal_parameter_list: /* nothing */ {$$ = nullptr;}
@@ -86,7 +87,7 @@ statement_list: /* nothing */ {$$ = nullptr;}
 ;
 
 var_decl_list: /* nothing */ {$$ = new BlockNode;}
-| var_decl_list value_type nonempty_id_list SEMICOLON {((BlockNode*)$1)->AppendVars((TypeNode*)$2, (IdList*)$3);}
+| var_decl_list value_type nonempty_id_list SEMICOLON {$$ = $1; ((BlockNode*)$$)->AppendVars((TypeNode*)$2, (IdList*)$3);}
 ;
 
 nonempty_id_list: ID {$$ = new IdList((StringLitNode*)$1, nullptr);}
@@ -101,7 +102,7 @@ statement: location assign_op expr SEMICOLON {$$ = $2; ((AssignNode*)$$)->locati
 | method_call SEMICOLON {$$ = $1;}
 | IF OPEN_PAREN expr CLOSE_PAREN block {$$ = new IfNode($3, (BlockNode*)$5, nullptr);}
 | IF OPEN_PAREN expr CLOSE_PAREN block ELSE block {$$ = new IfNode($3, (BlockNode*)$5, (BlockNode*)$7);}
-| FOR ID ASSIGN expr COMMA expr block {$$ = new ForNode(ReduceToString((StringLitNode*)$2), $4, $6, (BlockNode*)$7);}
+| FOR ID ASSIGN expr COMMA expr block {/*std::cerr << "ForNode " << ((StringLitNode*)$2)->value << '\n'; */$$ = new ForNode(ReduceToString((StringLitNode*)$2), $4, $6, (BlockNode*)$7);}
 | RETURN SEMICOLON {$$ = new ReturnNode(nullptr);}
 | RETURN expr SEMICOLON {$$ = new ReturnNode($2);}
 | BREAK SEMICOLON {$$ = new LoopControlNode(LoopControlType::BREAK);}

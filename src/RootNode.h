@@ -7,7 +7,7 @@
 struct Field {
   Type type;
   std::string id;
-  int length;
+  int length; // -1 for scalars
 };
 
 using FieldList = ListNode<Field>;
