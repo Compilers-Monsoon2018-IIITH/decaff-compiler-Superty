@@ -33,3 +33,34 @@ int ReduceToInt(IntLitNode* node) {
   delete node;
   return result;
 }
+
+std::string OpToString(Op op) {
+  switch (op) {
+    case Op::PLUS:
+      return "+";
+    case Op::MINUS:
+      return "-";
+    case Op::MULT:
+      return "*";
+    case Op::DIV:
+      return "/";
+    case Op::MOD:
+      return "%";
+    case Op::EQ:
+      return "==";
+    case Op::NE:
+      return "!=";
+    case Op::LT:
+      return "<";
+    case Op::LE:
+      return "<=";
+    case Op::GT:
+      return ">";
+    case Op::GE:
+      return ">=";
+    case Op::OR:
+      return "||";
+    case Op::AND:
+      return "&&";
+  }
+}

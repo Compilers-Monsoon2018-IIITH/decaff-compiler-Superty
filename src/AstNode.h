@@ -1,8 +1,10 @@
 #pragma once
+#include <string>
 
 enum class Type {
   CHAR_TYPE, INT_TYPE, BOOLEAN_TYPE, STRING_TYPE, VOID_TYPE, ERROR, UNKNOWN
 };
+std::string TypeToString(Type t);
 
 class AstVisitor;
 

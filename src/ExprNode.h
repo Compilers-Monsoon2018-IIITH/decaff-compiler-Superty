@@ -38,6 +38,7 @@ public:
 enum class Op {
   OR, AND, EQ, NE, LT, LE, GE, GT, PLUS, MINUS, MULT, DIV, MOD, NOT
 };
+std::string OpToString(Op op);
 
 class LocationNode : public AstNode {
 public:

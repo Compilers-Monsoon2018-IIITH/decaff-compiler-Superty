@@ -2,65 +2,7 @@
 #include <iostream>
 #include <unistd.h>
 
-const bool VERBOSE_DEBUG_OUTPUT = true;
-
-std::string TypeToString(Type t) {
-  if (t == Type::INT_TYPE) {
-    return "INT";
-  } else if (t == Type::BOOLEAN_TYPE) {
-    return "BOOL";
-  } else if (t == Type::CHAR_TYPE) {
-    return "CHAR";
-  } else if (t == Type::STRING_TYPE) {
-    return "STRING";
-  } else if (t == Type::VOID_TYPE) {
-    return "VOID";
-  } else if (t == Type::ERROR) {
-    return "ERROR";
-  } 
-}
-
-std::string OpToString(Op op) {
-    if(op == Op::PLUS) {
-      return "+";
-    }
-    if(op == Op::MINUS) {
-      return "-";
-    }
-    if(op == Op::MULT) {
-      return "*";
-    }
-    if(op == Op::DIV) {
-      return "/";
-    }
-    if(op == Op::MOD) {
-      return "%";
-    }
-    if(op == Op::EQ) {
-      return "==";
-    }
-    if(op == Op::NE) {
-      return "!=";
-    }
-    if(op == Op::LT) {
-      return "<";
-    }
-    if(op == Op::LE) {
-      return "<=";
-    }
-    if(op == Op::GT) {
-      return ">";
-    }
-    if(op == Op::GE) {
-      return ">=";
-    }
-    if(op == Op::OR) {
-      return "||";
-    }
-    if(op == Op::AND) {
-      return "&&";
-    }
-}
+const bool VERBOSE_DEBUG_OUTPUT = false;
 
 TypeCheckVisitor::TypeCheckVisitor()
 : success(true) { }
@@ -85,6 +27,9 @@ void DumpVar(Var v) {
 }
 
 void TypeCheckVisitor::DumpVars() {
+  if (!VERBOSE_DEBUG_OUTPUT) {
+    return;
+  }
   std::cerr << "~~~~VARS~~~~\n";
   for (auto pr : vars) {
     std::cerr << TypeToString(pr.second.first) << (pr.second.second ? "[]" : "") << ' ' << pr.first << '\n';
@@ -106,7 +51,7 @@ void TypeCheckVisitor::AddScopedVar(Var var, VarTable& shadow_list) {
 }
 void TypeCheckVisitor::RestoreShadowedVars(const VarTable& shadow_list) {
   for (auto pr : shadow_list) {
-    std::cerr << "Restoring " << pr.first << ' ' << TypeToString(pr.second.first) << '\n';
+    if (VERBOSE_DEBUG_OUTPUT) std::cerr << "Restoring " << pr.first << ' ' << TypeToString(pr.second.first) << '\n';
     if (pr.second.first == Type::VOID_TYPE) {
       vars.erase(pr.first);
     } else {
@@ -307,7 +252,7 @@ void TypeCheckVisitor::visit(MethodNode* node) {
   node->t = Type::VOID_TYPE;
 
   VarTable shadow_list;
-  std::cerr << "node->params: ";
+  if (VERBOSE_DEBUG_OUTPUT) std::cerr << "node->params: ";
   for (Var var : node->params) {
     DumpVar(var);
     AddScopedVar(var, shadow_list);
