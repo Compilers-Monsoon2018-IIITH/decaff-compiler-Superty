@@ -5,6 +5,10 @@ MethodNode::MethodNode(Type o_return_type, std::string o_id, VarList *var_list, 
   ReduceToVector(var_list, &params);
 }
 
+bool MethodNode::IsVoid() {
+  return return_type == Type::VOID_TYPE; 
+}
+
 MethodNode* ConstructMethodNode(AstNode* ret, AstNode* id, AstNode* var_list, AstNode* body) {
   return new MethodNode(
     ReduceToType((TypeNode*)ret),

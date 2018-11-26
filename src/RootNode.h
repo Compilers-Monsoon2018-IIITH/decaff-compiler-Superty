@@ -20,6 +20,7 @@ public:
   BlockNode *body;
   void accept(AstVisitor* v) override;
   MethodNode(Type o_return_type, std::string o_id, VarList *var_list, BlockNode *o_body);
+  bool IsVoid();
 };
 
 MethodNode* ConstructMethodNode(AstNode* ret, AstNode* id, AstNode* var_list, AstNode* body);

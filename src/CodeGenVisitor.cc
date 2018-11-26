@@ -35,6 +35,10 @@ void CodeGenVisitor::AnnulReturnWithError(const std::string& error) {
   ret = nullptr;
 }
 
+Function* CodeGenVisitor::CurrentFunction() {
+  return builder.GetInsertBlock()->getParent();
+}
+
 // bool CodeGenVisitor::Ensure(bool predicate) {
 //   if (!predicate) {
 //     success = false;
@@ -195,16 +199,18 @@ void CodeGenVisitor::visit(UnopNode* node) {
   }
 }
 void CodeGenVisitor::visit(BlockNode* node) {
-  Function* fn = builder.GetInsertBlock()->getParent();
   VarTable shadow_list;
   for (Var v : node->var_decls) {
-    AllocaInst *alloca = CreateEntryBlockAlloca(fn,
+    AllocaInst *alloca = CreateEntryBlockAlloca(CurrentFunction(),
       TypeToLLVMType(v.type), v.id);
     AddScopedVar(v.id, alloca, shadow_list);
     builder.CreateStore(TypeToDefaultValue(v.type), alloca);
   }
   for (auto statement : node->statements) {
     statement->accept(this);
+    if (builder.GetInsertBlock()->getTerminator()) {
+      break; // no code paths to this location.
+    }
   }
   RestoreShadowedVars(shadow_list);
 }
@@ -225,9 +231,68 @@ void CodeGenVisitor::visit(AssignNode* node) {
   }
 }
 void CodeGenVisitor::visit(IfNode* node) {
-  
+  Value *cond_value; node->cond->accept(this); cond_value = ret;
+  if (!cond_value) {
+    AnnulReturnWithError("Cond is null!\n");
+    return;
+  }
+
+  bool merge_bb_relevant = false;
+  BasicBlock *then_bb = BasicBlock::Create(context, "then", CurrentFunction());
+  BasicBlock *merge_bb = BasicBlock::Create(context, "if_then_merge");
+  BasicBlock *else_bb = (node->otherwise != nullptr) ?
+                        BasicBlock::Create(context, "else") :
+                        merge_bb;
+  builder.CreateCondBr(cond_value, then_bb, else_bb);
+  builder.SetInsertPoint(then_bb);
+
+  Value* then_value; node->then->accept(this); then_value = ret;
+  if (!then_value) {
+    AnnulReturnWithError("Then value is null!\n");
+    return;
+  }
+  if (!builder.GetInsertBlock()->getTerminator()) {
+    builder.CreateBr(merge_bb);
+    merge_bb_relevant = true;
+  }
+
+  if (node->otherwise != nullptr) {
+    CurrentFunction()->getBasicBlockList().push_back(else_bb);
+    builder.SetInsertPoint(else_bb);
+    Value* else_value; node->otherwise->accept(this); else_value = ret;
+    if (!else_value) {
+      AnnulReturnWithError("else value is null!\n");
+      return;
+    }
+    if (!builder.GetInsertBlock()->getTerminator()) {
+      builder.CreateBr(merge_bb);
+      merge_bb_relevant = true;
+    }
+  } else {
+    merge_bb_relevant = true;
+  }
+
+  if (merge_bb_relevant) {
+    CurrentFunction()->getBasicBlockList().push_back(merge_bb);
+    builder.SetInsertPoint(merge_bb);
+  }
 }
 void CodeGenVisitor::visit(ForNode* node) {
+  VarTable shadow_list;
+  AllocaInst* alloca = CreateEntryBlockAlloca(CurrentFunction(), llvm::Type::getInt32Ty(context), node->id);
+  AddScopedVar(node->id, alloca, shadow_list);
+  Value* start_value; node->start->accept(this); start_value = ret;
+  if (!start_value) {
+    AnnulReturnWithError("start value is null!\n");
+    return;
+  }
+
+  Value* end_value; node->start->accept(this); end_value = ret;
+  if (!end_value) {
+    AnnulReturnWithError("end value is null!\n");
+    return;
+  }
+
   
 }
 void CodeGenVisitor::visit(ReturnNode* node) {
@@ -240,7 +305,7 @@ void CodeGenVisitor::visit(ReturnNode* node) {
   }
 }
 void CodeGenVisitor::visit(LoopControlNode* node) {
-  
+    
 }
 void CodeGenVisitor::visit(MethodNode* node) {
   std::vector<llvm::Type*> param_types;
@@ -276,6 +341,14 @@ void CodeGenVisitor::visit(MethodNode* node) {
   }
 
   node->body->accept(this);
+  // needed because every basic block *must* have a terminator
+  // for well-formed programs, the instruction added here will
+  // never be executed anyway.
+  // if (node->IsVoid()) {
+  //   builder.CreateRetVoid();
+  // } else {
+  //   builder.CreateRet(TypeToDefaultValue(node->return_type));
+  // }
   verifyFunction(*fn, &errs());
   // fn->print(errs());
   // ret = fn;

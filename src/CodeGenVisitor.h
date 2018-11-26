@@ -52,6 +52,7 @@ private:
   std::unique_ptr<llvm::Module> module;
   llvm::Value *ret;
   VarTable vars;
+  llvm::Function* CurrentFunction();
   // std::unordered_map<std::string,std::vector<Type>> methods;
 
   void AddScopedVar(const std::string& name,
