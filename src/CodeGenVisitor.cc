@@ -9,6 +9,10 @@ llvm::Type* CodeGenVisitor::TypeToLLVMType(Type t) {
     return llvm::Type::getInt32Ty(context);
   } else if (t == Type::BOOLEAN_TYPE) {
     return llvm::Type::getInt1Ty(context);
+  } else if (t == Type::VOID_TYPE) {
+    return llvm::Type::getVoidTy(context);
+  } else {
+    std::cerr << "UNHANDLED TYPE!\n";
   }
 }
 
@@ -228,8 +232,12 @@ void CodeGenVisitor::visit(ForNode* node) {
 }
 void CodeGenVisitor::visit(ReturnNode* node) {
   // std::cerr << "return node\n";
-  Value *value; node->value->accept(this); value = ret;
-  builder.CreateRet(value);
+  if (node->value != nullptr) {
+    Value *value; node->value->accept(this); value = ret;
+    builder.CreateRet(value);
+  } else {
+    builder.CreateRetVoid();
+  }
 }
 void CodeGenVisitor::visit(LoopControlNode* node) {
   
