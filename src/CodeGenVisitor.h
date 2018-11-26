@@ -46,6 +46,7 @@ private:
   using VarTable = std::unordered_map<std::string,llvm::AllocaInst*>;
 
   void AnnulReturnWithError(const std::string& error);
+  llvm::Value* TypeToDefaultValue(Type type);
   llvm::LLVMContext context;
   llvm::IRBuilder<> builder;
   std::unique_ptr<llvm::Module> module;

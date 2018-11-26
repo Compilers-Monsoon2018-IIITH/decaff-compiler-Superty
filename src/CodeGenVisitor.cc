@@ -12,6 +12,14 @@ llvm::Type* CodeGenVisitor::TypeToLLVMType(Type t) {
   }
 }
 
+llvm::Value* CodeGenVisitor::TypeToDefaultValue(Type type) {
+  if (type != Type::INT_TYPE && type != Type::BOOLEAN_TYPE) {
+    std::cerr << "WARNING: no default value for non-int non-bool type.\n";
+  }
+  return llvm::ConstantInt::get(context,
+    llvm::APInt(type == Type::INT_TYPE ? 32 : 1, 0, true));
+}
+
 using namespace llvm;
 
 CodeGenVisitor::CodeGenVisitor()
@@ -161,14 +169,33 @@ void CodeGenVisitor::visit(UnopNode* node) {
   }
 }
 void CodeGenVisitor::visit(BlockNode* node) {
-  // TODO: Handle decls
-
+  Function* fn = builder.GetInsertBlock()->getParent();
+  VarTable shadow_list;
+  for (Var v : node->var_decls) {
+    AllocaInst *alloca = CreateEntryBlockAlloca(fn,
+      TypeToLLVMType(v.type), v.id);
+    AddScopedVar(v.id, alloca, shadow_list);
+    builder.CreateStore(TypeToDefaultValue(v.type), alloca);
+  }
   for (auto statement : node->statements) {
     statement->accept(this);
   }
+  RestoreShadowedVars(shadow_list);
 }
 void CodeGenVisitor::visit(AssignNode* node) {
-  
+  auto alloca = vars[node->location->id];
+  if (node->location->index == nullptr) {
+    Value *value; node->value->accept(this); value = ret;
+    if (node->op != AssignOp::ASSIGN) {
+      Value *cur_value = builder.CreateLoad(alloca, node->location->id);
+      if (node->op == AssignOp::PLUS_ASSIGN) {
+        value = builder.CreateAdd(cur_value, value, "plus_assign");
+      } else {
+        value = builder.CreateSub(cur_value, value, "plus_assign");
+      }
+    }
+    builder.CreateStore(value, alloca);
+  }
 }
 void CodeGenVisitor::visit(IfNode* node) {
   
