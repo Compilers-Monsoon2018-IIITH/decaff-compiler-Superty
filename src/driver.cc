@@ -5,11 +5,12 @@
 
 void drive(AstNode *ast) {
   RootNode *root = (RootNode*)ast;
-  std::cout << (root->id) << '\n';
   TypeCheckVisitor v;
   root->accept(&v);
-  std::cout << "Type check " << (v.success ? 
-    "succeeded." : "failed!") << '\n';
+  if (!v.success) {
+    std::cerr << "Type check failed!\n";
+    return;
+  }
   CodeGenVisitor code_generator;
   root->accept(&code_generator);
 }

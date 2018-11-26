@@ -23,6 +23,9 @@ void TypeCheckVisitor::ForceSame(Type& t, Type u) {
 }
 
 void DumpVar(Var v) {
+  if (!VERBOSE_DEBUG_OUTPUT) {
+    return;
+  }
   std:: cerr << TypeToString(v.type) << ' ' << v.id << "; ";
 }
 
@@ -257,7 +260,7 @@ void TypeCheckVisitor::visit(MethodNode* node) {
     DumpVar(var);
     AddScopedVar(var, shadow_list);
   }
-  std::cerr << '\n';
+  // std::cerr << '\n';
   DumpVars();
 
   node->body->accept(this);
