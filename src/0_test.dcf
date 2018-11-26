@@ -1,0 +1,5 @@
+class Program {
+  int main() {
+	  return 3 + 4 + 7 * 2 * 3;
+  }
+}
