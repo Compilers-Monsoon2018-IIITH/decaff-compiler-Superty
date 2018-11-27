@@ -56,6 +56,7 @@ private:
   std::unique_ptr<llvm::Module> module;
   llvm::Value *ret;
   VarTable vars;
+  std::unordered_map<std::string, unsigned> array_lengths;
   llvm::Function* CurrentFunction();
   // std::unordered_map<std::string,std::vector<Type>> methods;
 

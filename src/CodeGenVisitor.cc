@@ -86,6 +86,21 @@ Value* CodeGenVisitor::GEPFromLocationNode(LocationNode *node) {
       std::cerr << "index value is null!\nreturning nullptr.\n";
       return nullptr;
     }
+    Value *check_lt_length = builder.CreateICmpSLT(index_value, GetConstIntN(32, array_lengths[node->id]), "gep_check_lt_length");
+    Value *check_nonneg = builder.CreateICmpSGT(index_value, GetConstIntN(32, 0), "gep_check_nonneg");
+    Value *cond_value = builder.CreateAnd(check_lt_length, check_nonneg, "gep_bounds_check");
+    if (!cond_value) {
+      AnnulReturnWithError("gep_bounds_check val is null\n");
+      return;
+    }
+
+    BasicBlock *out_of_bounds_bb = BasicBlock::Create(context, "gep_bounds_check_fail", CurrentFunction());
+    BasicBlock *bounds_check_success_bb = BasicBlock::Create(context, "gep_succesful_bounds_check");
+    builder.CreateCondBr(cond_value, bounds_check_success_bb, out_of_bounds_bb);
+    builder.SetInsertPoint(out_of_bounds_bb);
+    // TODO: EMIT ERROR AND EXIT
+
+    builder.SetInsertPoint(bounds_check_success_bb);
     return builder.CreateGEP(vars[node->id], ArrayRef<Value *>({GetConstIntN(32, 0), index_value}), "indexed location");
   }
 }
@@ -425,7 +440,11 @@ void CodeGenVisitor::visit(MethodNode* node) {
 void CodeGenVisitor::visit(RootNode* node) {
   VarTable shadow_list;
   for (Field f : node->field_decls) {
-    int length = (f.length == -1 ? 1 : f.length);
+    int length = 1;
+    if (f.length != -1) {
+      length = f.length;
+      array_lengths[f.id] = f.length;
+    }
     llvm::Type *type = TypeToLLVMType(f.type);
     GlobalVariable *ptr;
     if (length == 1) {
