@@ -399,10 +399,8 @@ void CodeGenVisitor::visit(IfNode* node) {
     }
   }
 
-  if (merge_bb->hasNUsesOrMore(1)) {
-    CurrentFunction()->getBasicBlockList().push_back(merge_bb);
-    builder.SetInsertPoint(merge_bb);
-  }
+  CurrentFunction()->getBasicBlockList().push_back(merge_bb);
+  builder.SetInsertPoint(merge_bb);
 }
 void CodeGenVisitor::visit(ForNode* node) {
   Value* start_value; node->start->accept(this); start_value = ret;
@@ -416,7 +414,6 @@ void CodeGenVisitor::visit(ForNode* node) {
     AnnulReturnWithError("end value is null!\n");
     return;
   }
-
 
   BasicBlock *old_for_internal_bb = for_internal_bb;
   BasicBlock *old_for_after_bb = for_after_bb;
@@ -433,28 +430,21 @@ void CodeGenVisitor::visit(ForNode* node) {
   builder.CreateCondBr(brcond, for_bb, for_after_bb);
   builder.SetInsertPoint(for_bb);
   
-  Value *body_value; node->body->accept(this); ret = body_value;
-  if (!body_value) {
-    AnnulReturnWithError("body value is null!\n");
-    return;
-  }
+  node->body->accept(this);
 
   if (!CurrentBlockDone()) {
     builder.CreateBr(for_internal_bb);
   }
-  if (for_internal_bb->hasNUsesOrMore(1)) {
-    CurrentFunction()->getBasicBlockList().push_back(for_internal_bb);
-    builder.SetInsertPoint(for_internal_bb);
-    Value* i_val = builder.CreateAdd(builder.CreateLoad(i_alloca),
-                                    GetConstIntN(32, 1));
-    builder.CreateStore(i_val, i_alloca);
-    builder.CreateCondBr(builder.CreateICmpSLT(i_val, end_value),
-                      for_bb, for_after_bb);
-  }
-  if (for_after_bb->hasNUsesOrMore(1)) {
-    CurrentFunction()->getBasicBlockList().push_back(for_after_bb);
-    builder.SetInsertPoint(for_after_bb);
-  }
+  CurrentFunction()->getBasicBlockList().push_back(for_internal_bb);
+  builder.SetInsertPoint(for_internal_bb);
+  Value* i_val = builder.CreateAdd(builder.CreateLoad(i_alloca),
+                                  GetConstIntN(32, 1));
+  builder.CreateStore(i_val, i_alloca);
+  builder.CreateCondBr(builder.CreateICmpSLT(i_val, end_value),
+                    for_bb, for_after_bb);
+
+  CurrentFunction()->getBasicBlockList().push_back(for_after_bb);
+  builder.SetInsertPoint(for_after_bb);
 
   for_internal_bb = old_for_internal_bb;
   for_after_bb = old_for_after_bb;

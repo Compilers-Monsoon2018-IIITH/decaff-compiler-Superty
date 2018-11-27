@@ -3,8 +3,8 @@ class Program {
   int getInt() {
     int ret, input;
     ret = 0;
-    for thisLanguageHasNoWhileLoop = 1, 2 {
-      thisLanguageHasNoWhileLoop -= 1;
+    for idx = 1, 2 {
+      idx -= 1;
 
       input = callout("getchar");
       if (input >= 48 && input <= 57) {
