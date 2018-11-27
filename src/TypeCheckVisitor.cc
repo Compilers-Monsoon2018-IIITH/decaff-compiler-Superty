@@ -100,7 +100,7 @@ void TypeCheckVisitor::visit(LocationNode* node) {
   if (Ensure(vars.count(node->id) > 0)) {
     if ((node->index == nullptr) || (vars[node->id].second)) {
       if (node->index == nullptr || node->index->t == Type::INT_TYPE) {
-        node->t = (vars[node->id].second ? Type::ARRAY_TYPE : vars[node->id].first);
+        node->t = ((vars[node->id].second && node->index == nullptr) ? Type::ARRAY_TYPE : vars[node->id].first);
         return;
       }
     }
