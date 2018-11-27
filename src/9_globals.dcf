@@ -1,0 +1,8 @@
+class Program {
+	int input[100];
+	int main(int x) {
+    int thisfortrue;
+    thisfortrue = input[4] + input[7] + 9;
+		return thisfortrue;
+	}
+}

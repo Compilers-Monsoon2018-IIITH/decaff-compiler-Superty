@@ -1,1 +1,7 @@
 *.o
+lex.yy.cc
+parser.tab.cc
+parser.tab.hh
+parser
+parser.output
+*.o

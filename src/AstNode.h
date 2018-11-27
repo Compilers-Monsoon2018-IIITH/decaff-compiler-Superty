@@ -18,3 +18,4 @@ public:
 class UnvisitableNode : public AstNode {
   void accept(AstVisitor* v) override;
 };
+
