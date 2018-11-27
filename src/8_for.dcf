@@ -1,9 +1,15 @@
 class Program {
-	int main() {
-		int x;
+	void main() {
 		for i = 0, 12 {
-     		x = i;
-    	}
-		return x;
+   		for j = 3, 6 {
+        break;
+      }
+      continue;
+      if (1 >= 2) {
+        return;
+      } else {
+        return;
+      }
+  	}
 	}
 }

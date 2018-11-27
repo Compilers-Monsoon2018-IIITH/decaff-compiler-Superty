@@ -291,19 +291,32 @@ void CodeGenVisitor::visit(ForNode* node) {
     return;
   }
 
+  bool always_enter_loop = false;
+  Value *brcond = builder.CreateICmpSLT(start_value, end_value);
+  if (ConstantInt * c = dyn_cast<ConstantInt>(brcond)) {
+    if (c->isZero()) {
+      return;
+    } else {
+      always_enter_loop = true;
+    }
+  };
+
   BasicBlock *old_for_internal_bb = for_internal_bb;
   BasicBlock *old_for_after_bb = for_after_bb;
-  BasicBlock *for_bb = BasicBlock::Create(context, "for", CurrentFunction());
-  for_internal_bb = BasicBlock::Create(context, "for_internal");
-  for_after_bb = BasicBlock::Create(context, "for_after");
+  BasicBlock *for_bb = BasicBlock::Create(context, "for " + node->id, CurrentFunction());
+  for_internal_bb = BasicBlock::Create(context, "for_internal " + node->id);
+  for_after_bb = BasicBlock::Create(context, "for_after " + node->id);
 
   VarTable shadow_list;
   AllocaInst* i_alloca = CreateEntryBlockAlloca(CurrentFunction(), llvm::Type::getInt32Ty(context), node->id);
   AddScopedVar(node->id, i_alloca, shadow_list);
   builder.CreateStore(start_value, i_alloca);
   
-  builder.CreateCondBr(builder.CreateICmpSLT(start_value, end_value),
-                        for_bb, for_after_bb);
+  if (always_enter_loop) {
+    builder.CreateBr(for_bb);
+  } else {
+    builder.CreateCondBr(brcond, for_bb, for_after_bb);
+  }
 
   builder.SetInsertPoint(for_bb);
   
@@ -344,7 +357,7 @@ void CodeGenVisitor::visit(ReturnNode* node) {
 }
 void CodeGenVisitor::visit(LoopControlNode* node) {
   if (for_internal_bb == nullptr) {
-    AnnulReturnWithError("Loop control operation occured outside any for loop!\n");
+    AnnulReturnWithError("Loop control operation occured outside any loop!\n");
     return;
   }
   switch (node->type) {
@@ -393,9 +406,10 @@ void CodeGenVisitor::visit(MethodNode* node) {
   // needed because every basic block *must* have a terminator
   // for well-formed programs, the instruction added here will
   // never be executed anyway.
-  // if (node->IsVoid()) {
-  //   builder.CreateRetVoid();
-  // } else {
+  if (node->IsVoid()) {
+    builder.CreateRetVoid();
+  }
+  // else {
   //   builder.CreateRet(TypeToDefaultValue(node->return_type));
   // }
   verifyFunction(*fn, &errs());
