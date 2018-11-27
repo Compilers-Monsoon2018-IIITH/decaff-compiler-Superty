@@ -5,7 +5,9 @@
 const bool VERBOSE_DEBUG_OUTPUT = false;
 
 TypeCheckVisitor::TypeCheckVisitor()
-: success(true) { }
+: success(true)
+, for_depth(0)
+, enclosing_return_type(Type::VOID_TYPE) { }
 
 bool TypeCheckVisitor::Ensure(bool predicate) {
   if (!predicate) {
@@ -118,9 +120,9 @@ void TypeCheckVisitor::visit(MethodCallNode* node) {
         std::get<0>(arg)->accept(this);
       }
     }
-    node->t = Type::UNKNOWN;
+    node->t = Type::INT_TYPE;
   } else {
-    if (Ensure(methods.count(node->id) > 0)) {
+    if (Ensure(methods.count(node->id) > 0 && vars.count(node->id) == 0)) {
       Ensure(node->args.size() == methods[node->id].size() - 1);
       auto& params = methods[node->id];
       for (int i = 0; i < node->args.size(); i++) {
@@ -204,6 +206,8 @@ void TypeCheckVisitor::visit(AssignNode* node) {
   node->value->accept(this);
 
   ForceSame(node->value->t, node->location->t);
+  Ensure(node->op == AssignOp::ASSIGN || (
+    node->value->t == Type::INT_TYPE));
   node->t = Type::VOID_TYPE;
 }
 void TypeCheckVisitor::visit(IfNode* node) {
@@ -225,10 +229,15 @@ void TypeCheckVisitor::visit(ForNode* node) {
   }
   node->start->accept(this);
   node->end->accept(this);
+  Ensure(node->start->t == Type::INT_TYPE &&
+          node->end->t == Type::INT_TYPE);
 
   VarTable shadow_list;
   AddScopedVar(Var{Type::INT_TYPE, node->id}, shadow_list);
+
+  for_depth++;
   node->body->accept(this);
+  for_depth--;
   node->t = Type::VOID_TYPE;
 
   RestoreShadowedVars(shadow_list);
@@ -237,8 +246,12 @@ void TypeCheckVisitor::visit(ReturnNode* node) {
   if (VERBOSE_DEBUG_OUTPUT) {
     /*trace*/std::cerr << "=======ReturnNode\n";
   }
+
   if (node->value != nullptr) {
     node->value->accept(this);
+    Ensure(enclosing_return_type == node->value->t);
+  } else {
+    Ensure(enclosing_return_type == Type::VOID_TYPE);
   }
   node->t = Type::VOID_TYPE;
 }
@@ -246,6 +259,7 @@ void TypeCheckVisitor::visit(LoopControlNode* node) {
   if (VERBOSE_DEBUG_OUTPUT) {
     /*trace*/std::cerr << "=======LoopControlNode\n";
   }
+  Ensure(for_depth > 0);
   node->t = Type::VOID_TYPE;
 }
 void TypeCheckVisitor::visit(MethodNode* node) {
@@ -263,6 +277,7 @@ void TypeCheckVisitor::visit(MethodNode* node) {
   // std::cerr << '\n';
   DumpVars();
 
+  enclosing_return_type = node->return_type;
   node->body->accept(this);
 
   // std::cerr << "methodnode" << (node->id) << " almost done.\n";

@@ -4,9 +4,10 @@ class Program {
     int z; // THIS is a comment
     // int y[1234124312] = x;
     z = input[4] + input[7] + 9;
-		return z;
-	}
+    return 123;
+  }
   int main() {
+    int g;
     f(10);
   }
 }

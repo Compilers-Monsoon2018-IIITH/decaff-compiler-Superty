@@ -33,6 +33,8 @@ public:
 private:
   VarTable vars;
   std::unordered_map<std::string,std::vector<Type>> methods;
+  unsigned for_depth;
+  Type enclosing_return_type;
 
   void AddScopedVar(Var var, VarTable& shadow_list);
   void RestoreShadowedVars(const VarTable& shadow_list);

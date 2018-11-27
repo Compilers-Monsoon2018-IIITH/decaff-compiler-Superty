@@ -307,15 +307,6 @@ void CodeGenVisitor::visit(ForNode* node) {
     return;
   }
 
-  bool always_enter_loop = false;
-  Value *brcond = builder.CreateICmpSLT(start_value, end_value);
-  if (ConstantInt * c = dyn_cast<ConstantInt>(brcond)) {
-    if (c->isZero()) {
-      return;
-    } else {
-      always_enter_loop = true;
-    }
-  };
 
   BasicBlock *old_for_internal_bb = for_internal_bb;
   BasicBlock *old_for_after_bb = for_after_bb;
@@ -328,12 +319,8 @@ void CodeGenVisitor::visit(ForNode* node) {
   AddScopedVar(node->id, i_alloca, shadow_list);
   builder.CreateStore(start_value, i_alloca);
   
-  if (always_enter_loop) {
-    builder.CreateBr(for_bb);
-  } else {
-    builder.CreateCondBr(brcond, for_bb, for_after_bb);
-  }
-
+  Value *brcond = builder.CreateICmpSLT(start_value, end_value);
+  builder.CreateCondBr(brcond, for_bb, for_after_bb);
   builder.SetInsertPoint(for_bb);
   
   Value *body_value; node->body->accept(this); ret = body_value;
@@ -422,12 +409,13 @@ void CodeGenVisitor::visit(MethodNode* node) {
   node->body->accept(this);
   // needed because every basic block *must* have a terminator
   // the return statement has no semantic effect.
-  if (!CurrentBlockDone() && node->IsVoid()) {
-    builder.CreateRetVoid();
+  if (!CurrentBlockDone()) {
+    if (node->IsVoid()) {
+      builder.CreateRetVoid();
+    } else {
+      // TODO: OUTPUT ERROR MESSAGE AND QUIT
+    }
   }
-  // else {
-  //   builder.CreateRet(TypeToDefaultValue(node->return_type));
-  // }
   verifyFunction(*fn, &errs());
   // fn->print(errs());
   // ret = fn;
