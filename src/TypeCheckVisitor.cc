@@ -280,6 +280,9 @@ void TypeCheckVisitor::visit(RootNode* node) {
 
   for (Field f : node->field_decls) {
     if (Ensure(vars.count(f.id) == 0)) {
+      if (f.length != -1) {
+        Ensure(f.length > 0);
+      }
       vars[f.id] = {f.type, f.length != -1};
       if (VERBOSE_DEBUG_OUTPUT) {
         std::cerr << f.id << ", ";
@@ -289,10 +292,14 @@ void TypeCheckVisitor::visit(RootNode* node) {
     }
   }
 
+  bool main_found = false;
   for (MethodNode *method_node : node->method_decls) {
     // add method to methods
     Ensure(methods.count(method_node->id) == 0);
     methods[method_node->id] = {method_node->return_type};
+    if (method_node->id == "main" && method_node->params.empty()) {
+      main_found = true;
+    }
     for (Var var : method_node->params) {
       methods[method_node->id].push_back(var.type);
     }
@@ -300,6 +307,9 @@ void TypeCheckVisitor::visit(RootNode* node) {
     // std::cerr << "method id: " << method_node->id << '\n'; 
     method_node->accept(this);
   }
+  // if (!Ensure(main_found)) {
+  //   std::cerr << "Main not found!\n"
+  // }
 }
 
 void TypeCheckVisitor::visit(UnvisitableNode* node) {
