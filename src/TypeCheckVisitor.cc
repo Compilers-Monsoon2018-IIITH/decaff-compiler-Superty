@@ -98,9 +98,9 @@ void TypeCheckVisitor::visit(LocationNode* node) {
   }
 
   if (Ensure(vars.count(node->id) > 0)) {
-    if ((node->index != nullptr) == (vars[node->id].second)) {
+    if ((node->index == nullptr) || (vars[node->id].second)) {
       if (node->index == nullptr || node->index->t == Type::INT_TYPE) {
-        node->t = vars[node->id].first;
+        node->t = (vars[node->id].second ? Type::ARRAY_TYPE : vars[node->id].first);
         return;
       }
     }
@@ -114,7 +114,7 @@ void TypeCheckVisitor::visit(MethodCallNode* node) {
   if (VERBOSE_DEBUG_OUTPUT) {
     /*trace*/std::cerr << "=======MethodCallNode " << node->id << "\n";
   }
-  if (node->args.empty()) {
+  if (node->is_callout) {
     for (CalloutArg arg : node->callout_args) {
       if (arg.index() == 0) {
         std::get<0>(arg)->accept(this);

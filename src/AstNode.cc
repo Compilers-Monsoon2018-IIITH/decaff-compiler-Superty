@@ -15,5 +15,7 @@ std::string TypeToString(Type t) {
     return "VOID";
   } else if (t == Type::ERROR) {
     return "ERROR";
-  } 
+  } else if(t == Type::ARRAY_TYPE) {
+    return "ARRAY";
+  }
 }

@@ -10,19 +10,32 @@
 #include <stdlib.h>
 #include <iostream> 
 
+bool isValidChar(char c) {
+  return 32 <= c && c <= 126 && c != '\"' && c != '\'' && c != '\\';
+}
+
 std::string parseStringLiteral(char* text) {
   std::string s;
   int i = 1;
   while (text[i + 1] != '\0') {
     char c = text[i];
-    if (c == '\\') {
-      i++;
-      if (text[i] == 't') {
-        c = '\t';
-      } else if (text[i] == 'n') {
-        c = '\n';
+    if (!isValidChar(c)) {
+      if (c == '\\') {
+        i++;
+        // std::cerr << "val = " << text[i] << '\n';
+        if (text[i] == 't') {
+          c = '\t';
+        } else if (text[i] == 'n') {
+          c = '\n';
+        } else if (text[i] == '\"' || text[i] == '\'' | text[i] == '\\') {
+          c = text[i];
+        } else {
+          std::cerr << "syntax error\n";
+          exit(1);
+        }
       } else {
-        c = text[i];
+        std::cerr << "syntax error\n";
+        exit(1);
       }
     }
     s.push_back(c);
@@ -75,7 +88,7 @@ char [ !#-&(-[\]-~]|(\\\')|(\\\")|(\\\\)|(\\\t)|(\\\n)
 [a-zA-Z][a-zA-Z0-9]* { yylval = new StringLitNode(std::string(yytext)); return ID; }
 (0x[0-9a-fA-F]+)|([0-9]+) { int base = (yytext[1] == 'x') ? 16 : 10; yylval = new IntLitNode(strtol(yytext, NULL, base)); return INT_LITERAL; }
 "\'"{char}"\'" { yylval = new CharLitNode(yytext[1]); return CHAR_LITERAL; }
-"\""{char}*"\"" { std::string s = parseStringLiteral(yytext); std::cerr << "STRING LITERAL: " << s << '\n'; yylval = new StringLitNode(s); return STRING_LITERAL; }
+"\""[^\"]*"\"" { std::string s = parseStringLiteral(yytext); std::cerr << "STRING LITERAL: " << s << '\n'; yylval = new StringLitNode(s); return STRING_LITERAL; }
 [ \t\v\r\n]+ { /* ignore whitespace */ }
 "//".* { /* ignore comments */ }
 . { printf("Mystery character %c\n", *yytext); }

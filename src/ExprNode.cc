@@ -11,11 +11,13 @@ BoolLitNode::BoolLitNode(bool o_value)
 LocationNode::LocationNode(StringLitNode *o_id, AstNode* o_index)
 : id(ReduceToString(o_id)), index(o_index) { }
 MethodCallNode::MethodCallNode(StringLitNode *o_id, ListNode<AstNode*>* o_args)
-: id(ReduceToString(o_id)) {
+: id(ReduceToString(o_id))
+, is_callout(false) {
   ReduceToVector(o_args, &args);
 }
 MethodCallNode::MethodCallNode(StringLitNode *o_id, ListNode<CalloutArg>* o_callout_args)
-: id(ReduceToString(o_id)) {
+: id(ReduceToString(o_id))
+, is_callout(true) {
   ReduceToVector(o_callout_args, &callout_args);
 }
 BinopNode::BinopNode(AstNode* o_left, Op o_op, AstNode *o_right)

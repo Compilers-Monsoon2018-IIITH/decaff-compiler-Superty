@@ -52,6 +52,7 @@ public:
   std::string id;
   std::vector<AstNode*> args;
   std::vector<CalloutArg> callout_args;
+  bool is_callout;
   void accept(AstVisitor* v) override;
   MethodCallNode(StringLitNode *o_id, CalloutArgList* o_callout_args);
   MethodCallNode(StringLitNode *o_id, ArgList* o_args);

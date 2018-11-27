@@ -2,7 +2,7 @@
 #include <string>
 
 enum class Type {
-  CHAR_TYPE, INT_TYPE, BOOLEAN_TYPE, STRING_TYPE, VOID_TYPE, ERROR, UNKNOWN
+  CHAR_TYPE, INT_TYPE, BOOLEAN_TYPE, STRING_TYPE, VOID_TYPE, ERROR, UNKNOWN, ARRAY_TYPE
 };
 std::string TypeToString(Type t);
 

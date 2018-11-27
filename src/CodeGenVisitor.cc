@@ -79,13 +79,18 @@ Constant* CodeGenVisitor::GetConstIntN(unsigned N, int value) {
 
 Value* CodeGenVisitor::GEPFromLocationNode(LocationNode *node) {
   if (node->index == nullptr) {
-    return vars[node->id].first;
+    if (vars[node->id].second->isArrayTy()) {
+      return builder.CreateGEP(vars[node->id].first, ArrayRef<Value *>({GetConstIntN(32, 0), GetConstIntN(32, 0)}), "pointer_to_start_of_array");
+    } else {
+      return vars[node->id].first;
+    }
   } else {
     Value* index_value; node->index->accept(this); index_value = ret;
     if (!index_value) {
       std::cerr << "index value is null!\nreturning nullptr.\n";
       return nullptr;
     }
+
     Value *check_lt_length = builder.CreateICmpSLT(index_value, GetConstIntN(32, array_lengths[node->id]), "gep_check_lt_length");
     Value *check_nonneg = builder.CreateICmpSGT(index_value, GetConstIntN(32, 0), "gep_check_nonneg");
     Value *cond_value = builder.CreateAnd(check_lt_length, check_nonneg, "gep_bounds_check");
@@ -155,10 +160,14 @@ void CodeGenVisitor::visit(LocationNode* node) {
     AnnulReturnWithError("elem_ptr is null!\n");
     return;
   }
-  ret = builder.CreateLoad(elem_ptr, node->id + "[]");
+  if (vars[node->id].second->isArrayTy() && node->index == nullptr) {
+    ret = elem_ptr;
+  } else {
+    ret = builder.CreateLoad(elem_ptr, node->id + (node->index != nullptr ? "[]" : ""));
+  }
 }
 void CodeGenVisitor::visit(MethodCallNode* node) {
-  if (node->callout_args.empty()) {
+  if (!node->is_callout) {
     Function *called_fn = module->getFunction(node->id);
     if (!called_fn) {
       AnnulReturnWithError("Unknown function " + node->id + "\n");
@@ -173,33 +182,57 @@ void CodeGenVisitor::visit(MethodCallNode* node) {
       }
       args.push_back(ret);
     }
-    ret = builder.CreateCall(called_fn, args, "call");
+    if (called_fn->getReturnType()->isVoidTy()) {
+      // CallInst::Create(called_fn, args, builder.GetInsertBlock());
+      builder.CreateCall(called_fn, args);
+    } else {
+      ret = builder.CreateCall(called_fn, args, "call");
+    }
   } else {
+    // TODO: HANDLE ARRAYS
     std::vector<llvm::Type*> arg_types;
     std::vector<Value*> args;
+    std::cerr << "function " << node->id << "\n";
     for (CalloutArg arg : node->callout_args) {
+      std::cerr << "arg is ";
       if (arg.index() == 0) {
+        std::cerr << "int32 or int32*\n";
         Value *arg_value; std::get<0>(arg)->accept(this); arg_value = ret;
         if (!arg_value) {
           AnnulReturnWithError("arg value was null!\n");
           return;
         }
-        auto type = llvm::Type::getInt32Ty(context);
-        arg_types.push_back(type);
-        args.push_back(builder.CreateIntCast(arg_value, type, true));
+        if (arg_value->getType()->isPointerTy()) {
+          auto type = llvm::Type::getInt32PtrTy(context);
+          arg_types.push_back(type);
+          args.push_back(arg_value);
+        } else {
+          auto type = llvm::Type::getInt32Ty(context);
+          arg_types.push_back(type);
+          args.push_back(builder.CreateIntCast(arg_value, type, true));
+        }
       } else {
+        std::cerr << "string (i8*)\n";
         Value *arg_value = builder.CreateGlobalStringPtr(
           StringRef(std::get<1>(arg)));
         arg_types.push_back(llvm::Type::getInt8PtrTy(context));
         args.push_back(arg_value);
       }
     }
-    FunctionType *prototype = FunctionType::get(
-      llvm::Type::getInt32Ty(context),
-      arg_types,
-      false
-    );
-    Function *fn = Function::Create(prototype, Function::ExternalLinkage, node->id, module.get());
+    FunctionType *prototype;
+    Function *fn = module->getFunction(node->id);
+    if (!fn) {
+      prototype = FunctionType::get(
+        llvm::Type::getInt32Ty(context),
+        arg_types,
+        false
+      );
+      if (!prototype) {
+        AnnulReturnWithError("could not create prototype\n");
+        return;
+      }
+      fn = Function::Create(prototype, Function::ExternalLinkage, node->id, module.get());
+    }
     ret = builder.CreateCall(fn, args, "callout_call");
   }
 }
