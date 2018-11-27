@@ -43,11 +43,14 @@ public:
   bool success;
   CodeGenVisitor();
 private:
-  using VarTable = std::unordered_map<std::string,llvm::AllocaInst*>;
+  using VarTable = std::unordered_map<std::string,llvm::Value*>;
 
   void AnnulReturnWithError(const std::string& error);
   bool CurrentBlockDone();
-  llvm::Value* TypeToDefaultValue(Type type);
+  llvm::Value* GEPFromLocationNode(LocationNode *node);
+
+  llvm::Constant *GetConstIntN(unsigned N, int value);
+  llvm::Constant *TypeToDefaultValue(Type type);
   llvm::LLVMContext context;
   llvm::IRBuilder<> builder;
   std::unique_ptr<llvm::Module> module;
@@ -57,7 +60,7 @@ private:
   // std::unordered_map<std::string,std::vector<Type>> methods;
 
   void AddScopedVar(const std::string& name,
-    llvm::AllocaInst* alloca, VarTable& shadow_list);
+    llvm::Value* alloca, VarTable& shadow_list);
   void RestoreShadowedVars(const VarTable& shadow_list);
   llvm::Type* TypeToLLVMType(Type t);
   // void DumpVars();

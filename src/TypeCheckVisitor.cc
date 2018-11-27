@@ -281,9 +281,11 @@ void TypeCheckVisitor::visit(RootNode* node) {
   for (Field f : node->field_decls) {
     if (Ensure(vars.count(f.id) == 0)) {
       vars[f.id] = {f.type, f.length != -1};
-      std::cerr << f.id << ", ";
-      std::cerr << TypeToString(f.type) << ' ';
-      std::cerr << f.length << '\n';
+      if (VERBOSE_DEBUG_OUTPUT) {
+        std::cerr << f.id << ", ";
+        std::cerr << TypeToString(f.type) << ' ';
+        std::cerr << f.length << '\n';
+      }
     }
   }
 

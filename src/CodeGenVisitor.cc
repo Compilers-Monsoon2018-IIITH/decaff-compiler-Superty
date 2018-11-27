@@ -16,7 +16,7 @@ llvm::Type* CodeGenVisitor::TypeToLLVMType(Type t) {
   }
 }
 
-llvm::Value* CodeGenVisitor::TypeToDefaultValue(Type type) {
+llvm::Constant* CodeGenVisitor::TypeToDefaultValue(Type type) {
   if (type != Type::INT_TYPE && type != Type::BOOLEAN_TYPE) {
     std::cerr << "WARNING: no default value exists for non-int non-bool types.\n";
   }
@@ -43,6 +43,11 @@ Function* CodeGenVisitor::CurrentFunction() {
 
 bool CodeGenVisitor::CurrentBlockDone() {
   return builder.GetInsertBlock()->getTerminator();
+}
+
+Constant* CodeGenVisitor::GetConstIntN(unsigned N, int value) {
+  return ConstantInt::get(
+    llvm::Type::getIntNTy(context, N), APInt(N, value, true));
 }
 
 // bool CodeGenVisitor::Ensure(bool predicate) {
@@ -72,7 +77,20 @@ bool CodeGenVisitor::CurrentBlockDone() {
 //   }
 // }
 
-void CodeGenVisitor::AddScopedVar(const std::string& name, AllocaInst* alloca, VarTable& shadow_list) {
+Value* CodeGenVisitor::GEPFromLocationNode(LocationNode *node) {
+  if (node->index == nullptr) {
+    return vars[node->id];
+  } else {
+    Value* index_value; node->index->accept(this); index_value = ret;
+    if (!index_value) {
+      std::cerr << "index value is null!\nreturning nullptr.\n";
+      return nullptr;
+    }
+    return builder.CreateGEP(vars[node->id], ArrayRef<Value *>({GetConstIntN(32, 0), index_value}), "indexed location");
+  }
+}
+
+void CodeGenVisitor::AddScopedVar(const std::string& name, Value* alloca, VarTable& shadow_list) {
   if (vars.count(name) > 0) {
     // two params with same name
     if (shadow_list.count(name) == 0) {
@@ -95,10 +113,10 @@ void CodeGenVisitor::RestoreShadowedVars(const VarTable& shadow_list) {
   }
 }
 
-AllocaInst *CreateEntryBlockAlloca(Function *fn, llvm::Type* type, const std::string &id) {
+AllocaInst *CreateEntryBlockAlloca(Function *fn, llvm::Type* type, const std::string &id, Value* array_size = nullptr) {
   IRBuilder<> temp_builder(&fn->getEntryBlock(),
                  fn->getEntryBlock().begin());
-  return temp_builder.CreateAlloca(type, 0,
+  return temp_builder.CreateAlloca(type, nullptr,
                            id.c_str());
 }
 
@@ -109,17 +127,18 @@ void CodeGenVisitor::visit(CharLitNode* node) {
   ret = ConstantInt::get(context, APInt(8, node->value, false));
 }
 void CodeGenVisitor::visit(StringLitNode* node) {
-  // ret = builder.CreateGlobalStringPtr(StringRef(node->value));
+  ret = builder.CreateGlobalStringPtr(StringRef(node->value));
 }
 void CodeGenVisitor::visit(BoolLitNode* node) {
   ret = ConstantInt::get(context, APInt(1, node->value, true));
 }
 void CodeGenVisitor::visit(LocationNode* node) {
-  if (node->index == nullptr) {
-    ret = builder.CreateLoad(vars[node->id], node->id);
-  } else {
-    // TODO: HANDLE ARRAYS
+  Value* elem_ptr = GEPFromLocationNode(node);
+  if (!elem_ptr) {
+    AnnulReturnWithError("elem_ptr is null!\n");
+    return;
   }
+  ret = builder.CreateLoad(elem_ptr, node->id + "[]");
 }
 void CodeGenVisitor::visit(MethodCallNode* node) {
   if (node->callout_args.empty()) {
@@ -222,19 +241,16 @@ void CodeGenVisitor::visit(BlockNode* node) {
 }
 void CodeGenVisitor::visit(AssignNode* node) {
   Value *value; node->value->accept(this); value = ret;
-  auto alloca = vars[node->location->id];
-  // TODO: HANDLE ARRAYS
-  if (node->location->index == nullptr) {
-    if (node->op != AssignOp::ASSIGN) {
-      Value *cur_value = builder.CreateLoad(alloca, node->location->id);
-      if (node->op == AssignOp::PLUS_ASSIGN) {
-        value = builder.CreateAdd(cur_value, value, "plus_assign");
-      } else {
-        value = builder.CreateSub(cur_value, value, "plus_assign");
-      }
+  Value *elem_ptr = GEPFromLocationNode(node->location);
+  if (node->op != AssignOp::ASSIGN) {
+    Value *cur_value = builder.CreateLoad(elem_ptr, node->location->id);
+    if (node->op == AssignOp::PLUS_ASSIGN) {
+      value = builder.CreateAdd(cur_value, value, "plus_assign");
+    } else {
+      value = builder.CreateSub(cur_value, value, "minus_assign");
     }
-    builder.CreateStore(value, alloca);
   }
+  builder.CreateStore(value, elem_ptr);
 }
 void CodeGenVisitor::visit(IfNode* node) {
   Value *cond_value; node->cond->accept(this); cond_value = ret;
@@ -333,7 +349,7 @@ void CodeGenVisitor::visit(ForNode* node) {
     CurrentFunction()->getBasicBlockList().push_back(for_internal_bb);
     builder.SetInsertPoint(for_internal_bb);
     Value* i_val = builder.CreateAdd(builder.CreateLoad(i_alloca),
-                                    ConstantInt::get(llvm::Type::getInt32Ty(context), APInt(32, 1, true)));
+                                    GetConstIntN(32, 1));
     builder.CreateStore(i_val, i_alloca);
     builder.CreateCondBr(builder.CreateICmpSLT(i_val, end_value),
                       for_bb, for_after_bb);
@@ -345,6 +361,7 @@ void CodeGenVisitor::visit(ForNode* node) {
 
   for_internal_bb = old_for_internal_bb;
   for_after_bb = old_for_after_bb;
+  RestoreShadowedVars(shadow_list);
 }
 void CodeGenVisitor::visit(ReturnNode* node) {
   // std::cerr << "return node\n";
@@ -404,9 +421,8 @@ void CodeGenVisitor::visit(MethodNode* node) {
 
   node->body->accept(this);
   // needed because every basic block *must* have a terminator
-  // for well-formed programs, the instruction added here will
-  // never be executed anyway.
-  if (node->IsVoid()) {
+  // the return statement has no semantic effect.
+  if (!CurrentBlockDone() && node->IsVoid()) {
     builder.CreateRetVoid();
   }
   // else {
@@ -419,12 +435,29 @@ void CodeGenVisitor::visit(MethodNode* node) {
   RestoreShadowedVars(shadow_list);
 }
 void CodeGenVisitor::visit(RootNode* node) {
-  // TODO: Handle field decls
+  VarTable shadow_list;
+  for (Field f : node->field_decls) {
+    int length = (f.length == -1 ? 1 : f.length);
+    llvm::Type *type = TypeToLLVMType(f.type);
+    GlobalVariable *ptr;
+    if (length == 1) {
+      ptr = (GlobalVariable*) module->getOrInsertGlobal(f.id, type);
+      ptr->setInitializer(TypeToDefaultValue(f.type));
+    } else {
+      llvm::ArrayType *array_type = ArrayType::get(type, length);
+      ptr = (GlobalVariable*) module->getOrInsertGlobal(f.id, array_type);
+      ptr->setInitializer(ConstantArray::get(array_type,
+        ArrayRef(std::vector<Constant*>(length, TypeToDefaultValue(f.type)))));
+    }
+    AddScopedVar(f.id, ptr, shadow_list);
+  }
 
   for (MethodNode *method : node->method_decls) {
     method->accept(this);
   }
   module->print(outs(), nullptr);
+
+  RestoreShadowedVars(shadow_list);
 }
 void CodeGenVisitor::visit(UnvisitableNode* node) { }
 void CodeGenVisitor::visit(TypeNode* node) { }
