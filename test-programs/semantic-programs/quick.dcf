@@ -8,7 +8,7 @@ class Program {
     }
 
     i = l;
-    for j = l, r - 1 {
+    for j = l, r {
       if (input[j] < input[r]) {
         temp = input[j];
         input[j] = input[i];
@@ -41,13 +41,14 @@ class Program {
   }
   int main() {
     int n;
-    n = readInt();
-    for i = 0, n - 1 {
-      input[i] = readInt();
+    n = getInt();
+    for i = 0, n {
+      input[i] = getInt();
     }
     quick(0, n - 1);
-    for i = 0, n - 1 {
+    for i = 0, n {
       callout("printf", "%d ", input[i]);
     }
+    return 0;
   }
 }

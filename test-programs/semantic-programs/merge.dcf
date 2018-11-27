@@ -13,7 +13,7 @@ class Program {
 
     i = l;
     j = mid + 1;
-    for k = l, r {
+    for k = l, r + 1 {
       if (j > r) {
         temp[k] = input[i];
         i += 1;
@@ -28,7 +28,7 @@ class Program {
       }
     }
     
-    for k = l, r {
+    for k = l, r + 1 {
       input[k] = temp[k];
     }
   }
@@ -50,12 +50,12 @@ class Program {
   }
   int main() {
     int n;
-    n = readInt();
-    for i = 0, n - 1 {
-      input[i] = readInt();
+    n = getInt();
+    for i = 0, n {
+      input[i] = getInt();
     }
     merge(0, n - 1);
-    for i = 0, n - 1 {
+    for i = 0, n {
       callout("printf", "%d ", input[i]);
     }
     return 0;
