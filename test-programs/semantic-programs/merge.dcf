@@ -58,5 +58,6 @@ class Program {
     for i = 0, n - 1 {
       callout("printf", "%d ", input[i]);
     }
+    return 0;
   }
 }

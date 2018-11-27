@@ -17,4 +17,4 @@ run ./run.sh decaf_source.dcf
 This produces an a.out file which is an executable.
 
 # Description 
-The driver calls typecheck first, and then the codegen. The generated is output to stdout.
+The driver calls typecheck first, and then the codegen. The generated is output to stdout. callout function overloading is implemented. runtime and semantic erros are fully implemented.
