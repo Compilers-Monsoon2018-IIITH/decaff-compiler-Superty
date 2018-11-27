@@ -97,12 +97,12 @@ Value* CodeGenVisitor::GetCallout(const std::string& id, llvm::FunctionType *pro
     return nullptr;
   }
 
-  return builder.CreateCall(callee, args, "callout_call");
+  return builder.CreateCall(callee, args);
 }
 
 void CodeGenVisitor::GenErrorAndExitInst(const std::string& error) {
   FunctionType *exit_prototype = FunctionType::get(
-    llvm::Type::getInt32Ty(context),
+    llvm::Type::getVoidTy(context),
     {llvm::Type::getInt32Ty(context)},
     false
   );
@@ -137,7 +137,7 @@ Value* CodeGenVisitor::GEPFromLocationNode(LocationNode *node) {
     }
 
     Value *check_lt_length = builder.CreateICmpSLT(index_value, GetConstIntN(32, array_lengths[node->id]), "gep_check_lt_length");
-    Value *check_nonneg = builder.CreateICmpSGT(index_value, GetConstIntN(32, 0), "gep_check_nonneg");
+    Value *check_nonneg = builder.CreateICmpSGE(index_value, GetConstIntN(32, 0), "gep_check_nonneg");
     Value *cond_value = builder.CreateAnd(check_lt_length, check_nonneg, "gep_bounds_check");
     if (!cond_value) {
       std::cerr << "gep_bounds_check val is null\n returning nullptr\n";
