@@ -46,6 +46,7 @@ private:
   using VarTable = std::unordered_map<std::string,llvm::AllocaInst*>;
 
   void AnnulReturnWithError(const std::string& error);
+  bool CurrentBlockDone();
   llvm::Value* TypeToDefaultValue(Type type);
   llvm::LLVMContext context;
   llvm::IRBuilder<> builder;
@@ -62,4 +63,8 @@ private:
   // void DumpVars();
   // bool Ensure(bool predicate);
   // void ForceSame(Type& t, Type u);
+
+  // these are the blocks corresponding to the innermost for loop we are in.
+  // set to nullptr, if we aren't in a for loop.
+  llvm::BasicBlock *for_internal_bb, *for_after_bb;
 };

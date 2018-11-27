@@ -1,0 +1,9 @@
+class Program {
+	int main() {
+		int x;
+		for i = 0, 12 {
+     		x = i;
+    	}
+		return x;
+	}
+}

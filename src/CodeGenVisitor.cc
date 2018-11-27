@@ -28,7 +28,9 @@ using namespace llvm;
 
 CodeGenVisitor::CodeGenVisitor()
 : builder(context)
-, module(std::move(llvm::make_unique<Module>("module", context))) { }
+, module(std::move(llvm::make_unique<Module>("module", context)))
+, for_internal_bb(nullptr) 
+, for_after_bb(nullptr) { }
 
 void CodeGenVisitor::AnnulReturnWithError(const std::string& error) {
   std::cerr << error << "Returning nullptr.\n";
@@ -37,6 +39,10 @@ void CodeGenVisitor::AnnulReturnWithError(const std::string& error) {
 
 Function* CodeGenVisitor::CurrentFunction() {
   return builder.GetInsertBlock()->getParent();
+}
+
+bool CodeGenVisitor::CurrentBlockDone() {
+  return builder.GetInsertBlock()->getTerminator();
 }
 
 // bool CodeGenVisitor::Ensure(bool predicate) {
@@ -208,7 +214,7 @@ void CodeGenVisitor::visit(BlockNode* node) {
   }
   for (auto statement : node->statements) {
     statement->accept(this);
-    if (builder.GetInsertBlock()->getTerminator()) {
+    if (CurrentBlockDone()) {
       break; // no code paths to this location.
     }
   }
@@ -237,7 +243,6 @@ void CodeGenVisitor::visit(IfNode* node) {
     return;
   }
 
-  bool merge_bb_relevant = false;
   BasicBlock *then_bb = BasicBlock::Create(context, "then", CurrentFunction());
   BasicBlock *merge_bb = BasicBlock::Create(context, "if_then_merge");
   BasicBlock *else_bb = (node->otherwise != nullptr) ?
@@ -251,9 +256,8 @@ void CodeGenVisitor::visit(IfNode* node) {
     AnnulReturnWithError("Then value is null!\n");
     return;
   }
-  if (!builder.GetInsertBlock()->getTerminator()) {
+  if (!CurrentBlockDone()) {
     builder.CreateBr(merge_bb);
-    merge_bb_relevant = true;
   }
 
   if (node->otherwise != nullptr) {
@@ -264,36 +268,70 @@ void CodeGenVisitor::visit(IfNode* node) {
       AnnulReturnWithError("else value is null!\n");
       return;
     }
-    if (!builder.GetInsertBlock()->getTerminator()) {
+    if (!CurrentBlockDone()) {
       builder.CreateBr(merge_bb);
-      merge_bb_relevant = true;
     }
-  } else {
-    merge_bb_relevant = true;
   }
 
-  if (merge_bb_relevant) {
+  if (merge_bb->hasNUsesOrMore(1)) {
     CurrentFunction()->getBasicBlockList().push_back(merge_bb);
     builder.SetInsertPoint(merge_bb);
   }
 }
 void CodeGenVisitor::visit(ForNode* node) {
-  VarTable shadow_list;
-  AllocaInst* alloca = CreateEntryBlockAlloca(CurrentFunction(), llvm::Type::getInt32Ty(context), node->id);
-  AddScopedVar(node->id, alloca, shadow_list);
   Value* start_value; node->start->accept(this); start_value = ret;
   if (!start_value) {
     AnnulReturnWithError("start value is null!\n");
     return;
   }
 
-  Value* end_value; node->start->accept(this); end_value = ret;
+  Value* end_value; node->end->accept(this); end_value = ret;
   if (!end_value) {
     AnnulReturnWithError("end value is null!\n");
     return;
   }
 
+  BasicBlock *old_for_internal_bb = for_internal_bb;
+  BasicBlock *old_for_after_bb = for_after_bb;
+  BasicBlock *for_bb = BasicBlock::Create(context, "for", CurrentFunction());
+  for_internal_bb = BasicBlock::Create(context, "for_internal");
+  for_after_bb = BasicBlock::Create(context, "for_after");
+
+  VarTable shadow_list;
+  AllocaInst* i_alloca = CreateEntryBlockAlloca(CurrentFunction(), llvm::Type::getInt32Ty(context), node->id);
+  AddScopedVar(node->id, i_alloca, shadow_list);
+  builder.CreateStore(start_value, i_alloca);
   
+  builder.CreateCondBr(builder.CreateICmpSLT(start_value, end_value),
+                        for_bb, for_after_bb);
+
+  builder.SetInsertPoint(for_bb);
+  
+  Value *body_value; node->body->accept(this); ret = body_value;
+  if (!body_value) {
+    AnnulReturnWithError("body value is null!\n");
+    return;
+  }
+
+  if (!CurrentBlockDone()) {
+    builder.CreateBr(for_internal_bb);
+  }
+  if (for_internal_bb->hasNUsesOrMore(1)) {
+    CurrentFunction()->getBasicBlockList().push_back(for_internal_bb);
+    builder.SetInsertPoint(for_internal_bb);
+    Value* i_val = builder.CreateAdd(builder.CreateLoad(i_alloca),
+                                    ConstantInt::get(llvm::Type::getInt32Ty(context), APInt(32, 1, true)));
+    builder.CreateStore(i_val, i_alloca);
+    builder.CreateCondBr(builder.CreateICmpSLT(i_val, end_value),
+                      for_bb, for_after_bb);
+  }
+  if (for_after_bb->hasNUsesOrMore(1)) {
+    CurrentFunction()->getBasicBlockList().push_back(for_after_bb);
+    builder.SetInsertPoint(for_after_bb);
+  }
+
+  for_internal_bb = old_for_internal_bb;
+  for_after_bb = old_for_after_bb;
 }
 void CodeGenVisitor::visit(ReturnNode* node) {
   // std::cerr << "return node\n";
@@ -305,7 +343,18 @@ void CodeGenVisitor::visit(ReturnNode* node) {
   }
 }
 void CodeGenVisitor::visit(LoopControlNode* node) {
-    
+  if (for_internal_bb == nullptr) {
+    AnnulReturnWithError("Loop control operation occured outside any for loop!\n");
+    return;
+  }
+  switch (node->type) {
+    case LoopControlType::CONTINUE:
+      builder.CreateBr(for_internal_bb);
+      break;
+    case LoopControlType::BREAK:
+      builder.CreateBr(for_after_bb);
+      break;
+  }
 }
 void CodeGenVisitor::visit(MethodNode* node) {
   std::vector<llvm::Type*> param_types;
