@@ -60,6 +60,8 @@ private:
   llvm::Function* CurrentFunction();
   // std::unordered_map<std::string,std::vector<Type>> methods;
 
+  llvm::Value* GetCallout(const std::string& id, llvm::FunctionType *prototype, std::vector<llvm::Value*> args);
+  void GenErrorAndExitInst(const std::string& error);
   void AddScopedVar(const std::string& name,
     std::pair<llvm::Value*, llvm::Type*> alloca, VarTable& shadow_list);
   void RestoreShadowedVars(const VarTable& shadow_list);

@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 const bool VERBOSE_DEBUG_OUTPUT = false;
+const char* NONCALLOUT_PREFIX = "noncallout_";
 
 llvm::Type* CodeGenVisitor::TypeToLLVMType(Type t) {
   if (t == Type::INT_TYPE) {
@@ -77,6 +78,50 @@ Constant* CodeGenVisitor::GetConstIntN(unsigned N, int value) {
 //   }
 // }
 
+Value* CodeGenVisitor::GetCallout(const std::string& id, llvm::FunctionType *prototype, std::vector<Value*> args) {
+  Function *fn = module->getFunction(id);
+  if (!prototype) {
+    std::cerr << "could not create prototype\n returning nullptr\n";
+    return nullptr;
+  }
+  if (!fn) {
+    fn = Function::Create(prototype, Function::ExternalLinkage, id, module.get());
+  }
+  Value *callee = fn;
+  if (fn->getFunctionType() != prototype) {
+    callee = builder.CreateBitCast(fn, PointerType::get(prototype, 0), "BIT_CAST_CALLOUT");
+  }
+
+  if (!callee) {
+    std::cerr << "could not get callee\n returning nullptr\n";
+    return nullptr;
+  }
+
+  return builder.CreateCall(callee, args, "callout_call");
+}
+
+void CodeGenVisitor::GenErrorAndExitInst(const std::string& error) {
+  FunctionType *exit_prototype = FunctionType::get(
+    llvm::Type::getInt32Ty(context),
+    {llvm::Type::getInt32Ty(context)},
+    false
+  );
+  FunctionType *printf_prototype = FunctionType::get(
+    llvm::Type::getInt32Ty(context),
+    {llvm::Type::getInt8PtrTy(context)},
+    false
+  );
+  Value* error_string = builder.CreateGlobalStringPtr(error);
+  GetCallout("printf", printf_prototype, {error_string});
+  GetCallout("exit", exit_prototype, {GetConstIntN(32, 1)});
+  llvm::Type* return_type = CurrentFunction()->getReturnType();
+  if (return_type->isVoidTy()) {
+    builder.CreateRetVoid();
+  } else {
+    builder.CreateRet(Constant::getNullValue(return_type));
+  }
+}
+
 Value* CodeGenVisitor::GEPFromLocationNode(LocationNode *node) {
   if (node->index == nullptr) {
     if (vars[node->id].second->isArrayTy()) {
@@ -103,8 +148,7 @@ Value* CodeGenVisitor::GEPFromLocationNode(LocationNode *node) {
     BasicBlock *bounds_check_success_bb = BasicBlock::Create(context, "gep_succesful_bounds_check");
     builder.CreateCondBr(cond_value, bounds_check_success_bb, out_of_bounds_bb);
     builder.SetInsertPoint(out_of_bounds_bb);
-    // TODO: EMIT ERROR AND EXIT
-    builder.CreateBr(bounds_check_success_bb);
+    GenErrorAndExitInst("\nruntime error: array access to " + node->id + " out of bounds.\n");
 
     CurrentFunction()->getBasicBlockList().push_back(bounds_check_success_bb);
     builder.SetInsertPoint(bounds_check_success_bb);
@@ -189,7 +233,6 @@ void CodeGenVisitor::visit(MethodCallNode* node) {
       ret = builder.CreateCall(called_fn, args, "call");
     }
   } else {
-    // TODO: HANDLE ARRAYS
     std::vector<llvm::Type*> arg_types;
     std::vector<Value*> args;
     std::cerr << "function " << node->id << "\n";
@@ -219,21 +262,12 @@ void CodeGenVisitor::visit(MethodCallNode* node) {
         args.push_back(arg_value);
       }
     }
-    FunctionType *prototype;
-    Function *fn = module->getFunction(node->id);
-    if (!fn) {
-      prototype = FunctionType::get(
-        llvm::Type::getInt32Ty(context),
-        arg_types,
-        false
-      );
-      if (!prototype) {
-        AnnulReturnWithError("could not create prototype\n");
-        return;
-      }
-      fn = Function::Create(prototype, Function::ExternalLinkage, node->id, module.get());
-    }
-    ret = builder.CreateCall(fn, args, "callout_call");
+    FunctionType *prototype = FunctionType::get(
+      llvm::Type::getInt32Ty(context),
+      arg_types,
+      false
+    );
+    ret = GetCallout(node->id, prototype, std::move(args));
   }
 }
 void CodeGenVisitor::visit(BinopNode* node) {
@@ -489,8 +523,7 @@ void CodeGenVisitor::visit(MethodNode* node) {
     if (node->IsVoid()) {
       builder.CreateRetVoid();
     } else {
-      // TODO: OUTPUT ERROR MESSAGE AND QUIT
-      builder.CreateRet(TypeToDefaultValue(node->return_type));
+      GenErrorAndExitInst("\nruntime error: reached end of function with non-void return.\n");
     }
   }
   verifyFunction(*fn, &errs());
