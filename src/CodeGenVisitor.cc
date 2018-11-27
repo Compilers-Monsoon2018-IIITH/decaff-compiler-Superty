@@ -79,7 +79,7 @@ Constant* CodeGenVisitor::GetConstIntN(unsigned N, int value) {
 
 Value* CodeGenVisitor::GEPFromLocationNode(LocationNode *node) {
   if (node->index == nullptr) {
-    return vars[node->id];
+    return vars[node->id].first;
   } else {
     Value* index_value; node->index->accept(this); index_value = ret;
     if (!index_value) {
@@ -90,8 +90,8 @@ Value* CodeGenVisitor::GEPFromLocationNode(LocationNode *node) {
     Value *check_nonneg = builder.CreateICmpSGT(index_value, GetConstIntN(32, 0), "gep_check_nonneg");
     Value *cond_value = builder.CreateAnd(check_lt_length, check_nonneg, "gep_bounds_check");
     if (!cond_value) {
-      AnnulReturnWithError("gep_bounds_check val is null\n");
-      return;
+      std::cerr << "gep_bounds_check val is null\n returning nullptr\n";
+      return nullptr;
     }
 
     BasicBlock *out_of_bounds_bb = BasicBlock::Create(context, "gep_bounds_check_fail", CurrentFunction());
@@ -99,13 +99,15 @@ Value* CodeGenVisitor::GEPFromLocationNode(LocationNode *node) {
     builder.CreateCondBr(cond_value, bounds_check_success_bb, out_of_bounds_bb);
     builder.SetInsertPoint(out_of_bounds_bb);
     // TODO: EMIT ERROR AND EXIT
+    builder.CreateBr(bounds_check_success_bb);
 
+    CurrentFunction()->getBasicBlockList().push_back(bounds_check_success_bb);
     builder.SetInsertPoint(bounds_check_success_bb);
-    return builder.CreateGEP(vars[node->id], ArrayRef<Value *>({GetConstIntN(32, 0), index_value}), "indexed location");
+    return builder.CreateGEP(vars[node->id].first, ArrayRef<Value *>({GetConstIntN(32, 0), index_value}), "indexed location");
   }
 }
 
-void CodeGenVisitor::AddScopedVar(const std::string& name, Value* alloca, VarTable& shadow_list) {
+void CodeGenVisitor::AddScopedVar(const std::string& name, std::pair<Value*,llvm::Type*> alloca, VarTable& shadow_list) {
   if (vars.count(name) > 0) {
     // two params with same name
     if (shadow_list.count(name) == 0) {
@@ -113,14 +115,14 @@ void CodeGenVisitor::AddScopedVar(const std::string& name, Value* alloca, VarTab
     }
   } else {
     // store a placeholder so we know to remove the id later
-    shadow_list[name] = nullptr;
+    shadow_list[name] = {nullptr, nullptr};
   }
   vars[name] = alloca;
 }
 void CodeGenVisitor::RestoreShadowedVars(const VarTable& shadow_list) {
   for (auto pr : shadow_list) {
     if (VERBOSE_DEBUG_OUTPUT) std::cerr << "Restoring " << pr.first << '\n';
-    if (pr.second == nullptr) {
+    if (pr.second.first == nullptr && pr.second.second == nullptr) {
       vars.erase(pr.first);
     } else {
       vars[pr.first] = pr.second; // unshadow old variables
@@ -159,7 +161,7 @@ void CodeGenVisitor::visit(MethodCallNode* node) {
   if (node->callout_args.empty()) {
     Function *called_fn = module->getFunction(node->id);
     if (!called_fn) {
-      AnnulReturnWithError("Unknown function :(\n");
+      AnnulReturnWithError("Unknown function " + node->id + "\n");
       return;
     }
     std::vector<Value*> args;
@@ -173,7 +175,32 @@ void CodeGenVisitor::visit(MethodCallNode* node) {
     }
     ret = builder.CreateCall(called_fn, args, "call");
   } else {
-    // TODO: HANDLE CALLOUT
+    std::vector<llvm::Type*> arg_types;
+    std::vector<Value*> args;
+    for (CalloutArg arg : node->callout_args) {
+      if (arg.index() == 0) {
+        Value *arg_value; std::get<0>(arg)->accept(this); arg_value = ret;
+        if (!arg_value) {
+          AnnulReturnWithError("arg value was null!\n");
+          return;
+        }
+        auto type = llvm::Type::getInt32Ty(context);
+        arg_types.push_back(type);
+        args.push_back(builder.CreateIntCast(arg_value, type, true));
+      } else {
+        Value *arg_value = builder.CreateGlobalStringPtr(
+          StringRef(std::get<1>(arg)));
+        arg_types.push_back(llvm::Type::getInt8PtrTy(context));
+        args.push_back(arg_value);
+      }
+    }
+    FunctionType *prototype = FunctionType::get(
+      llvm::Type::getInt32Ty(context),
+      arg_types,
+      false
+    );
+    Function *fn = Function::Create(prototype, Function::ExternalLinkage, node->id, module.get());
+    ret = builder.CreateCall(fn, args, "callout_call");
   }
 }
 void CodeGenVisitor::visit(BinopNode* node) {
@@ -241,9 +268,10 @@ void CodeGenVisitor::visit(UnopNode* node) {
 void CodeGenVisitor::visit(BlockNode* node) {
   VarTable shadow_list;
   for (Var v : node->var_decls) {
+    auto type = TypeToLLVMType(v.type);
     AllocaInst *alloca = CreateEntryBlockAlloca(CurrentFunction(),
-      TypeToLLVMType(v.type), v.id);
-    AddScopedVar(v.id, alloca, shadow_list);
+      type, v.id);
+    AddScopedVar(v.id, {alloca, type}, shadow_list);
     builder.CreateStore(TypeToDefaultValue(v.type), alloca);
   }
   for (auto statement : node->statements) {
@@ -331,7 +359,7 @@ void CodeGenVisitor::visit(ForNode* node) {
 
   VarTable shadow_list;
   AllocaInst* i_alloca = CreateEntryBlockAlloca(CurrentFunction(), llvm::Type::getInt32Ty(context), node->id);
-  AddScopedVar(node->id, i_alloca, shadow_list);
+  AddScopedVar(node->id, {i_alloca, llvm::Type::getInt32Ty(context)}, shadow_list);
   builder.CreateStore(start_value, i_alloca);
   
   Value *brcond = builder.CreateICmpSLT(start_value, end_value);
@@ -400,7 +428,7 @@ void CodeGenVisitor::visit(MethodNode* node) {
     param_types,
     false);
   Function *fn = Function::Create(
-    prototype, Function::ExternalLinkage, node->id, module.get());
+    prototype, node->id == "main" ? Function::ExternalLinkage : Function::PrivateLinkage, node->id, module.get());
   if (!fn) {
     AnnulReturnWithError("Function prototype has nullptr value.\n");
     return;
@@ -414,10 +442,10 @@ void CodeGenVisitor::visit(MethodNode* node) {
   for (auto &arg : fn->args()) {
     // std::cerr << "node->param is " << node->params[idx].id << '\n';
     arg.setName(node->params[idx].id);
-    AllocaInst *alloca = CreateEntryBlockAlloca(fn,
-      prototype->getParamType(idx), arg.getName());
+    auto type = prototype->getParamType(idx);
+    AllocaInst *alloca = CreateEntryBlockAlloca(fn, type, arg.getName());
     builder.CreateStore(&arg, alloca);
-    AddScopedVar(node->params[idx].id, alloca, shadow_list);
+    AddScopedVar(node->params[idx].id, {alloca, type}, shadow_list);
     idx++;
   }
 
@@ -429,6 +457,7 @@ void CodeGenVisitor::visit(MethodNode* node) {
       builder.CreateRetVoid();
     } else {
       // TODO: OUTPUT ERROR MESSAGE AND QUIT
+      builder.CreateRet(TypeToDefaultValue(node->return_type));
     }
   }
   verifyFunction(*fn, &errs());
@@ -451,12 +480,12 @@ void CodeGenVisitor::visit(RootNode* node) {
       ptr = (GlobalVariable*) module->getOrInsertGlobal(f.id, type);
       ptr->setInitializer(TypeToDefaultValue(f.type));
     } else {
-      llvm::ArrayType *array_type = ArrayType::get(type, length);
-      ptr = (GlobalVariable*) module->getOrInsertGlobal(f.id, array_type);
-      ptr->setInitializer(ConstantArray::get(array_type,
+      type = ArrayType::get(type, length);
+      ptr = (GlobalVariable*) module->getOrInsertGlobal(f.id, type);
+      ptr->setInitializer(ConstantArray::get((llvm::ArrayType*)type,
         ArrayRef(std::vector<Constant*>(length, TypeToDefaultValue(f.type)))));
     }
-    AddScopedVar(f.id, ptr, shadow_list);
+    AddScopedVar(f.id, {ptr, type}, shadow_list);
   }
 
   for (MethodNode *method : node->method_decls) {

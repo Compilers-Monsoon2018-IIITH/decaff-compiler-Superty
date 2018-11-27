@@ -26,7 +26,9 @@ std::string parseStringLiteral(char* text) {
       }
     }
     s.push_back(c);
+    i++;
   }
+  return s;
 }
 %}
 

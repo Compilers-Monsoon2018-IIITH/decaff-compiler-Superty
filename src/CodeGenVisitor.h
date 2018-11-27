@@ -43,7 +43,7 @@ public:
   bool success;
   CodeGenVisitor();
 private:
-  using VarTable = std::unordered_map<std::string,llvm::Value*>;
+  using VarTable = std::unordered_map<std::string,std::pair<llvm::Value*,llvm::Type*>>;
 
   void AnnulReturnWithError(const std::string& error);
   bool CurrentBlockDone();
@@ -61,7 +61,7 @@ private:
   // std::unordered_map<std::string,std::vector<Type>> methods;
 
   void AddScopedVar(const std::string& name,
-    llvm::Value* alloca, VarTable& shadow_list);
+    std::pair<llvm::Value*, llvm::Type*> alloca, VarTable& shadow_list);
   void RestoreShadowedVars(const VarTable& shadow_list);
   llvm::Type* TypeToLLVMType(Type t);
   // void DumpVars();

@@ -1,0 +1,44 @@
+class Program {
+  int input[100];
+  void bubble(int n) {
+    int temp;
+    
+    for i = 0, n - 1 {
+      for j = 1, n - 1 {
+        if (input[i - 1] > input[i]) {
+          temp = input[i - 1];
+          input[i - 1] = input[i];
+          input[i] = temp;
+        }
+      }
+    }
+  }
+  
+  int getInt() {
+    int ret, input;
+    ret = 0;
+    for thisLanguageHasNoWhileLoop = 1, 2 {
+      thisLanguageHasNoWhileLoop -= 1;
+
+      input = callout("getchar");
+      if (input >= 48 && input <= 57) {
+        ret = 10*ret + input - 48;
+      } else {
+        break;
+      }
+    }
+    return ret;
+  }
+  int main() {
+    int n;
+    n = getInt();
+    for i = 0, n - 1 {
+      input[i] = getInt();
+    }
+    bubble(n);
+    for i = 0, n - 1 {
+      callout("printf", "%d ", input[i]);
+    }
+    return 0;
+  }
+}
