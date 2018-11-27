@@ -88,7 +88,7 @@ char [ !#-&(-[\]-~]|(\\\')|(\\\")|(\\\\)|(\\\t)|(\\\n)
 [a-zA-Z][a-zA-Z0-9]* { yylval = new StringLitNode(std::string(yytext)); return ID; }
 (0x[0-9a-fA-F]+)|([0-9]+) { int base = (yytext[1] == 'x') ? 16 : 10; yylval = new IntLitNode(strtol(yytext, NULL, base)); return INT_LITERAL; }
 "\'"{char}"\'" { yylval = new CharLitNode(yytext[1]); return CHAR_LITERAL; }
-"\""[^\"]*"\"" { std::string s = parseStringLiteral(yytext); std::cerr << "STRING LITERAL: " << s << '\n'; yylval = new StringLitNode(s); return STRING_LITERAL; }
+"\""[^\"]*"\"" { std::string s = parseStringLiteral(yytext); yylval = new StringLitNode(s); return STRING_LITERAL; }
 [ \t\v\r\n]+ { /* ignore whitespace */ }
 "//".* { /* ignore comments */ }
 . { printf("Mystery character %c\n", *yytext); }

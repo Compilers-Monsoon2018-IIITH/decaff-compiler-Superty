@@ -235,11 +235,11 @@ void CodeGenVisitor::visit(MethodCallNode* node) {
   } else {
     std::vector<llvm::Type*> arg_types;
     std::vector<Value*> args;
-    std::cerr << "function " << node->id << "\n";
+    // std::cerr << "function " << node->id << "\n";
     for (CalloutArg arg : node->callout_args) {
-      std::cerr << "arg is ";
+      // std::cerr << "arg is ";
       if (arg.index() == 0) {
-        std::cerr << "int32 or int32*\n";
+        // std::cerr << "int32 or int32*\n";
         Value *arg_value; std::get<0>(arg)->accept(this); arg_value = ret;
         if (!arg_value) {
           AnnulReturnWithError("arg value was null!\n");
@@ -255,7 +255,7 @@ void CodeGenVisitor::visit(MethodCallNode* node) {
           args.push_back(builder.CreateIntCast(arg_value, type, true));
         }
       } else {
-        std::cerr << "string (i8*)\n";
+        // std::cerr << "string (i8*)\n";
         Value *arg_value = builder.CreateGlobalStringPtr(
           StringRef(std::get<1>(arg)));
         arg_types.push_back(llvm::Type::getInt8PtrTy(context));
@@ -420,9 +420,9 @@ void CodeGenVisitor::visit(ForNode* node) {
 
   BasicBlock *old_for_internal_bb = for_internal_bb;
   BasicBlock *old_for_after_bb = for_after_bb;
-  BasicBlock *for_bb = BasicBlock::Create(context, "for " + node->id, CurrentFunction());
-  for_internal_bb = BasicBlock::Create(context, "for_internal " + node->id);
-  for_after_bb = BasicBlock::Create(context, "for_after " + node->id);
+  BasicBlock *for_bb = BasicBlock::Create(context, "for_" + node->id, CurrentFunction());
+  for_internal_bb = BasicBlock::Create(context, "for_internal_" + node->id);
+  for_after_bb = BasicBlock::Create(context, "for_after_" + node->id);
 
   VarTable shadow_list;
   AllocaInst* i_alloca = CreateEntryBlockAlloca(CurrentFunction(), llvm::Type::getInt32Ty(context), node->id);

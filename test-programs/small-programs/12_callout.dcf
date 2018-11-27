@@ -1,22 +1,5 @@
 class Program {
-  int input[100];
-  void bubble(int n) {
-    int temp;
-    for i = 0, n {
-      for j = 1, n {
-        if (input[j - 1] > input[j]) {
-          temp = input[j - 1];
-          input[j - 1] = input[j];
-          input[j] = temp;
-        }
-      }
-      callout("printf", "\n", 1);
-      for i = 0, n {
-        callout("printf", "%d ", input[i]);
-      }
-    }
-  }
-  
+  int input[100];  
   int getInt() {
     int ret, input;
     ret = 0;
@@ -35,11 +18,11 @@ class Program {
   int main() {
     int n;
     n = getInt();
+    callout("printf", "%d", n);
     for i = 0, n {
       input[i] = getInt();
       callout("printf", "%d ", input[i]);
     }
-    bubble(n);
     return 0;
   }
 }
