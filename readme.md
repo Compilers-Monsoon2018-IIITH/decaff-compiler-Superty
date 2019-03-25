@@ -1,3 +1,8 @@
+# Build and Run
+* Run make. this produces the compiler executable 'adc'.
+* Run ./run.sh decaf_source.dcf
+* This calls adc on the source file, and then runs clang on it to produce an a.out executable file.
+
 # Structure 
 
 * driver.cc: Contains the driver, which runs the semantic check first and then generates the code.
@@ -11,10 +16,5 @@
 * lexer.l: contains the flex source code for the lexer.
 * parser.y: contains the bison source code for the parser.
 
-# Run
-* run make. this produces the compiler executable 'adc'.
-* run ./run.sh decaf_source.dcf
-* This calls adc on the source file, and then runs clang on it to produce an a.out executable file.
-
 # Description 
-The driver calls typecheck first, and then the codegen. The generated code is output to stdout. Callout function overloading is implemented. Runtime and semantic errors are fully implemented.
+The driver calls typecheck first, and then the codegen. The generated code is output to stdout. Callout function overloading is implemented. All required runtime and semantic errors are handled.
