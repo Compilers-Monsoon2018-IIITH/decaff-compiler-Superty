@@ -18,3 +18,5 @@
 
 # Description 
 The driver calls typecheck first, and then the codegen. The generated code is output to stdout. Callout function overloading is implemented. All required runtime and semantic errors are handled.
+
+Warning: very bad code, in some parts.
